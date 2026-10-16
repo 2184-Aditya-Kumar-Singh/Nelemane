@@ -1,0 +1,7 @@
+node_modules
+.pnpm-store
+.next
+.local-storage
+pnpm-lock.yaml
+package-lock.json
+next-env.d.ts
