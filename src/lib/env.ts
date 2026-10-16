@@ -95,6 +95,17 @@ const environmentSchema = z
     }
 
     if (
+      (values.MSG91_AUTH_KEY || values.MSG91_SENDER_ID || values.MSG91_TEMPLATE_ID) &&
+      (!values.MSG91_AUTH_KEY || !values.MSG91_TEMPLATE_ID)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["MSG91_TEMPLATE_ID"],
+        message: "Set MSG91_AUTH_KEY and MSG91_TEMPLATE_ID together",
+      });
+    }
+
+    if (
       values.NEXTAUTH_SECRET &&
       values.NEXTAUTH_SECRET !== values.AUTH_SECRET
     ) {

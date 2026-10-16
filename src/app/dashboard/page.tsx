@@ -45,6 +45,14 @@ export default async function DashboardPage() {
           >
             Change password
           </a>
+          {user.role === "SUPER_ADMIN" && (
+            <a
+              href="/admin"
+              className="bg-primary text-primary-foreground mt-4 inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold hover:opacity-90"
+            >
+              Open admin console
+            </a>
+          )}
         </div>
 
         <form action={logout} className="mt-7">

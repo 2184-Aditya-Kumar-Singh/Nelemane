@@ -22,7 +22,10 @@ export function getEmailProvider(): EmailProvider {
 
 function createEmailProvider(): EmailProvider {
   const env = getEnv();
-  if (env.NODE_ENV !== "production") {
+  const hasSmtpSettings = Boolean(
+    env.SMTP_HOST && env.SMTP_PORT && env.SMTP_USER && env.SMTP_PASS && env.EMAIL_FROM,
+  );
+  if (env.NODE_ENV !== "production" && !env.RESEND_API_KEY && !hasSmtpSettings) {
     return createDevelopmentEmailProvider();
   }
 

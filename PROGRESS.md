@@ -41,4 +41,23 @@ Status: complete.
 
 The workspace explicitly allows the `esbuild` postinstall script required by the TypeScript seed runner. The seed command is ready; it was not run against the configured database during this phase.
 
-Next: Phase 3 — Admin.
+## Phase 3 — Admin
+
+Status: complete.
+
+- [x] Added the PG and AdminReport models, including indexed subscription expiry, soft deletion, and report status fields.
+- [x] Added a four-step Super Admin PG registration flow with browser draft saving that excludes bank account numbers.
+- [x] Added image upload handling with admin- and purpose-bound temporary upload references, Cloudinary support when configured, and local storage fallback for development.
+- [x] Creates the PG and owner account in one MongoDB transaction, encrypts bank account numbers with AES-256-GCM, sends temporary owner credentials, and requires a first-login password change.
+- [x] Added the admin dashboard, PG search and filters, PG details/edit, subscription suspend/reactivate, typed soft deletion, owner notifications, and the 30-day record/image purge.
+- [x] Added admin report resolution and filtered audit log views.
+- [x] Configured SMTP/Resend and MSG91 providers to use local credentials when configured, with safe development fallbacks when absent.
+- [x] Passed typecheck, lint and production build; committed the completed phase.
+
+### Verification
+
+- `pnpm run typecheck` — passed.
+- `pnpm run lint` — passed.
+- `pnpm run build` — passed using a temporary `build/` output directory because Windows denies cleanup of the existing `.next` directory. The Next.js config was restored afterward.
+
+Next: Phase 4 — PG owner details and room management.
