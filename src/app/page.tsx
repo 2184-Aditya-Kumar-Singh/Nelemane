@@ -2,6 +2,10 @@ import Link from "next/link";
 import { ArrowUpRight, House, Leaf, MapPin, ShieldCheck } from "lucide-react";
 
 import { APP_NAME, APP_TAGLINE } from "@/config/app";
+import { PublicPgCard } from "@/app/_components/public-pg-card";
+import { minimumRents, publicPgCard, publicPgsByIds } from "@/server/public-pgs";
+
+export const dynamic = "force-dynamic";
 
 const values = [
   {
@@ -21,7 +25,14 @@ const values = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  let featuredCards: ReturnType<typeof publicPgCard>[] = [];
+  let listingsAvailable = true;
+  try {
+    const featured = await publicPgsByIds(undefined, 3);
+    const rents = await minimumRents(featured.map((pg) => pg._id));
+    featuredCards = featured.map((pg) => publicPgCard(pg, rents.get(pg._id.toString()) ?? null));
+  } catch { listingsAvailable = false; }
   return (
     <main className="bg-background relative min-h-screen overflow-hidden">
       <div
@@ -53,6 +64,7 @@ export default function HomePage() {
         </Link>
 
         <nav aria-label="Main navigation" className="flex items-center gap-3">
+          <Link href="/contact?intent=list-pg" className="text-foreground/65 hover:bg-muted hidden min-h-11 items-center rounded-full px-4 text-sm font-semibold sm:inline-flex">List your PG</Link>
           <Link
             href="/login"
             className="text-foreground/75 hover:bg-muted hover:text-foreground inline-flex min-h-11 items-center rounded-full px-4 text-sm font-semibold transition-colors"
@@ -163,6 +175,11 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="relative z-10 mx-auto w-full max-w-7xl px-5 py-14 sm:px-8 lg:px-12">
+        <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-accent text-xs font-bold tracking-[0.16em] uppercase">Places to begin</p><h2 className="font-display text-primary mt-2 text-3xl font-medium sm:text-4xl">Featured homes in Bengaluru</h2></div><Link href="/pgs" className="text-primary text-sm font-semibold underline underline-offset-4">Explore all PGs</Link></div>
+        {featuredCards.length ? <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{featuredCards.map((pg) => <PublicPgCard key={pg.id} pg={pg} />)}</div> : <div className="mt-7 rounded-3xl border border-dashed p-8 text-center"><p className="font-display text-primary text-xl">{listingsAvailable ? "New homes are on the way." : "Listings are temporarily unavailable."}</p><p className="text-foreground/60 mt-2 text-sm">{listingsAvailable ? "Check back soon or browse Bengaluru areas to start your search." : "Please try again shortly."}</p><Link href="/pgs" className="text-primary mt-4 inline-block text-sm font-semibold underline">Browse PG listings</Link></div>}
+      </section>
+
       <section className="relative z-10 mx-auto grid w-full max-w-7xl gap-4 px-5 pb-12 sm:grid-cols-3 sm:px-8 lg:px-12">
         {values.map(({ icon: Icon, title, description }) => (
           <article
@@ -181,6 +198,15 @@ export default function HomePage() {
           </article>
         ))}
       </section>
+
+      <section className="relative z-10 mx-auto w-full max-w-7xl px-5 pb-14 sm:px-8 lg:px-12"><p className="text-accent text-xs font-bold tracking-[0.16em] uppercase">A simple start</p><h2 className="font-display text-primary mt-2 text-3xl font-medium">How it works</h2><div className="mt-5 grid gap-4 sm:grid-cols-3">{[{ n: "01", title: "Choose your area", text: "Search neighbourhoods and compare rent, facilities and room sharing." }, { n: "02", title: "Explore a PG", text: "Review the room types, rules, photos and resident ratings." }, { n: "03", title: "Talk to the owner", text: "Call or message the PG directly to confirm availability and arrange a visit." }].map((step) => <article key={step.n} className="rounded-2xl border bg-white/55 p-5 dark:bg-white/[0.04]"><span className="text-accent text-xs font-bold tracking-widest">{step.n}</span><h3 className="font-display text-primary mt-2 text-xl">{step.title}</h3><p className="text-foreground/60 mt-2 text-sm leading-6">{step.text}</p></article>)}</div></section>
+
+      <section className="relative z-10 mx-auto grid w-full max-w-7xl gap-5 px-5 pb-16 sm:px-8 lg:grid-cols-2 lg:px-12">
+        <article className="rounded-3xl bg-primary p-7 text-white sm:p-9"><p className="text-accent text-xs font-bold tracking-[0.16em] uppercase">For residents</p><h2 className="font-display mt-3 text-3xl font-medium">Find a place that fits your next chapter.</h2><p className="mt-3 max-w-lg text-sm leading-6 text-white/75">Compare neighbourhoods, facilities, room types and verified resident ratings before you visit.</p><Link href="/pgs" className="bg-accent text-primary mt-6 inline-flex min-h-11 items-center rounded-xl px-5 text-sm font-semibold">Explore available PGs</Link></article>
+        <article className="rounded-3xl border bg-white/75 p-7 sm:p-9 dark:bg-white/[0.04]"><p className="text-accent text-xs font-bold tracking-[0.16em] uppercase">For PG owners</p><h2 className="font-display text-primary mt-3 text-3xl font-medium">Make day-to-day management feel lighter.</h2><p className="text-foreground/65 mt-3 max-w-lg text-sm leading-6">Keep rooms, residents, rent, menus and maintenance in one clear workspace.</p><Link href="/contact?intent=list-pg" className="bg-primary text-primary-foreground mt-6 inline-flex min-h-11 items-center rounded-xl px-5 text-sm font-semibold">List your PG</Link></article>
+      </section>
+
+      <footer className="border-border relative z-10 border-t bg-white/55 px-5 py-7 dark:bg-white/[0.02]"><div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:px-3"><Link href="/" className="font-display text-primary text-lg font-semibold">Nelemane <span className="ml-1 text-sm">ನೆಲೆಮನೆ</span><span className="text-foreground/50 mt-1 block font-sans text-xs font-normal">Your home away from home, in Bengaluru.</span></Link><nav aria-label="Footer" className="flex flex-wrap gap-4 text-sm"><Link href="/pgs" className="hover:underline">Find a PG</Link><Link href="/contact" className="hover:underline">Contact</Link><Link href="/privacy" className="hover:underline">Privacy</Link><Link href="/terms" className="hover:underline">Terms</Link></nav></div></footer>
     </main>
   );
 }

@@ -177,6 +177,7 @@ pgSchema.index({ slug: 1 }, { unique: true, name: "pg_slug_unique" });
 pgSchema.index({ status: 1, createdAt: -1 }, { name: "pg_status_created" });
 pgSchema.index({ "subscription.status": 1, "subscription.endsAt": 1 }, { name: "pg_subscription_expiry" });
 pgSchema.index({ "address.locality": 1, isListed: 1, status: 1 }, { name: "pg_public_locality" });
+pgSchema.index({ status: 1, "subscription.status": 1, isListed: 1, ratingAvg: -1, createdAt: -1 }, { name: "pg_public_discovery" });
 pgSchema.index({ deletedAt: 1 }, { name: "pg_deleted_at" });
 
 export const PgModel =

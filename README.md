@@ -38,6 +38,10 @@ Owners edit the repeating Monday–Sunday meal plan at `/owner/menu`; tenants se
 
 Residents can update their phone and profile picture and edit a one-per-PG rating from `/tenant/profile`. Rating averages are stored on the PG record for discovery. Tenant and owner ticket changes, private image access, menu edits, and reviews are recorded in the audit log.
 
+## Public PG discovery
+
+The landing page shows featured listed homes and links to `/pgs`. The listing supports locality, rent range, gender, room sharing, facilities, minimum rating, sorting and pagination, with filters stored in the URL. `/pgs/[slug]` includes the PG photo gallery, room types and prices, house rules, map link, owner contact, rating distribution and resident reviews. Only active PGs with an active subscription and `isListed` enabled appear publicly. `/sitemap.xml` includes those public PGs, while `/robots.txt` keeps account and management routes out of crawling. Use `/contact` for listing and support messages; `/privacy` and `/terms` describe the service’s current data use and payment flow.
+
 ## Environment
 
 Every environment variable is documented in `.env.example`. MongoDB, Auth.js, cron, encryption and Super Admin values are required. Cloudinary and Resend/SMTP settings enable production storage and email; MSG91 settings enable transactional SMS. In production, missing storage or email credentials cause configuration validation to fail rather than enabling development fallbacks.
