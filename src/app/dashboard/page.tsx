@@ -1,5 +1,6 @@
 import { signOut } from "@/auth";
 import { requireAuthenticatedUser } from "@/server/auth/authorization";
+import Link from "next/link";
 
 const roleLabel = {
   SUPER_ADMIN: "Super Admin",
@@ -52,6 +53,14 @@ export default async function DashboardPage() {
             >
               Open admin console
             </a>
+          )}
+          {user.role === "PG_OWNER" && (
+            <Link
+              href="/owner"
+              className="bg-primary text-primary-foreground mt-4 inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold hover:opacity-90"
+            >
+              Open PG workspace
+            </Link>
           )}
         </div>
 

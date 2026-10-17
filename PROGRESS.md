@@ -61,3 +61,24 @@ Status: complete.
 - `pnpm run build` — passed using a temporary `build/` output directory because Windows denies cleanup of the existing `.next` directory. The Next.js config was restored afterward.
 
 Next: Phase 4 — PG owner details and room management.
+
+## Phase 4 — PG owner setup and rooms
+
+Status: complete.
+
+- [x] Added owner-scoped PG profile editing for description, gender, facilities, custom facilities, house rules, ordered gallery photos, rent window, reminders and public listing.
+- [x] Added owner-only profile, gallery, room photo and private payment QR uploads with temporary-asset ownership checks and signed QR previews.
+- [x] Added encrypted bank detail editing, payment method validation, audit entries and administrator email notifications that omit account values.
+- [x] Added room type create/edit/delete with sharing, AC, attached bathroom, rent/deposit in paise, amenities and up to eight photos.
+- [x] Added room create/edit/delete with floor, block, room number, capacity constraints and duplicate detection.
+- [x] Added occupancy board, free-bed counts, owner navigation and dashboard entry point; tenant occupancy connects in Phase 5.
+- [x] Restored optional owner and PG profile photo fields in registration, as specified by the optional-photo policy.
+- [x] Passed typecheck, lint and production build; committed the completed phase.
+
+### Verification
+
+- `pnpm run typecheck` — passed.
+- `pnpm run lint` — passed.
+- `pnpm run build` — passed with `.env.local` loaded and generated output isolated in `.next-phase4/` because existing Next.js output folders are ACL-protected. The committed Next.js config uses the standard `.next/` directory.
+
+Next: Phase 5 — tenant management.

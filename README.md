@@ -20,6 +20,8 @@ The Super Admin seed reads `ADMIN_EMAIL` and `ADMIN_INITIAL_PASSWORD` from `.env
 
 Open `/login` to sign in. A seeded Super Admin must change the temporary password before continuing. `/forgot-password` sends a single-use reset link; in development, copy the link from the terminal output. Signed-in users can change their password from `/dashboard`. Sessions use Auth.js encrypted JWTs in HTTP-only cookies; privileged server routes must use the database-backed helpers in `src/server/auth/authorization.ts` and derive PG scope from the active session.
 
+PG owners can open `/owner` for their workspace. `/owner/pg-details` manages the public profile, facilities, gallery, rent window, reminders, listing visibility and payment instructions. `/owner/rooms` manages room types, rooms and configured bed availability. Tenant assignments will populate occupancy in Phase 5. Bank account numbers are encrypted before storage; payment changes create an audit record and notify the configured platform administrator without including the account number in the message.
+
 ## Environment
 
 Every environment variable is documented in `.env.example`. MongoDB, Auth.js, cron, encryption and Super Admin values are required. Cloudinary and Resend/SMTP settings enable production storage and email; MSG91 settings enable transactional SMS. In production, missing storage or email credentials cause configuration validation to fail rather than enabling development fallbacks.

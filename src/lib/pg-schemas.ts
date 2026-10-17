@@ -22,7 +22,7 @@ export const pgRegistrationSchema = z.object({
     name: z.string().trim().min(2).max(120),
     phone: z.string().trim().regex(/^\+?[0-9]{10,15}$/, "Enter a valid phone number"),
     email: z.string().trim().email().max(254).transform((value) => value.toLowerCase()),
-    profileAssetId: objectId,
+    profileAssetId: objectId.optional(),
   }),
   pg: z.object({
     name: z.string().trim().min(2).max(140),
@@ -41,7 +41,7 @@ export const pgRegistrationSchema = z.object({
       phone: z.string().trim().regex(/^\+?[0-9]{10,15}$/).optional().or(z.literal("")),
       relation: optionalText(80),
     }),
-    profileAssetId: objectId,
+    profileAssetId: objectId.optional(),
   }),
   payment: z.object({
     accountType: z.enum(["BUSINESS", "PERSONAL"]),

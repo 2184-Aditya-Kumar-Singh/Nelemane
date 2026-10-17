@@ -1,6 +1,14 @@
 import { model, models, Schema, type Model, type Types } from "mongoose";
 
-export const UPLOAD_PURPOSES = ["OWNER_PROFILE", "PG_PROFILE", "PAYMENT_QR"] as const;
+export const UPLOAD_PURPOSES = [
+  "OWNER_PROFILE",
+  "PG_PROFILE",
+  "PAYMENT_QR",
+  "OWNER_PG_PROFILE",
+  "PG_GALLERY",
+  "ROOM_TYPE_PHOTO",
+  "OWNER_PAYMENT_QR",
+] as const;
 export type UploadPurpose = (typeof UPLOAD_PURPOSES)[number];
 
 export interface TemporaryAssetRecord {
