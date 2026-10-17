@@ -7,6 +7,9 @@ import { connectToDatabase } from "@/server/db/connection";
 import { AdminReportModel } from "@/server/db/models/admin-report";
 import { AuditLogModel } from "@/server/db/models/audit-log";
 import { PgModel } from "@/server/db/models/pg";
+import { RoomModel } from "@/server/db/models/room";
+import { RoomTypeModel } from "@/server/db/models/room-type";
+import { TenantModel } from "@/server/db/models/tenant";
 import { TemporaryAssetModel } from "@/server/db/models/temporary-asset";
 import { UserModel } from "@/server/db/models/user";
 import { getStorageProvider } from "@/server/providers/storage";
@@ -57,6 +60,9 @@ export async function POST(request: Request) {
             await Promise.all([
               AdminReportModel.deleteMany({ pgId: pg._id }, { session }),
               TemporaryAssetModel.deleteMany({ pgId: pg._id }, { session }),
+              TenantModel.deleteMany({ pgId: pg._id }, { session }),
+              RoomModel.deleteMany({ pgId: pg._id }, { session }),
+              RoomTypeModel.deleteMany({ pgId: pg._id }, { session }),
               UserModel.deleteMany({ pgId: pg._id }, { session }),
               PgModel.deleteOne({ _id: pg._id }, { session }),
             ]);

@@ -1,7 +1,7 @@
 node_modules/
 .pnpm-store/
 .next/
-.next-phase4*/
+.next-phase*/
 .turbo/
 out/
 build/

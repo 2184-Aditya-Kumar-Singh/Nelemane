@@ -8,6 +8,7 @@ const navigation = [
   { href: "/owner", label: "Overview" },
   { href: "/owner/pg-details", label: "PG details" },
   { href: "/owner/rooms", label: "Rooms & types" },
+  { href: "/owner/tenants", label: "Tenants" },
 ];
 
 export default async function OwnerLayout({ children }: Readonly<{ children: ReactNode }>) {

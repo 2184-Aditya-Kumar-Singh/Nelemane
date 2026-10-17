@@ -7,6 +7,7 @@ export interface RoomRecord {
   floor: string;
   block?: string;
   capacity: number;
+  occupiedCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,6 +20,7 @@ const roomSchema = new Schema<RoomRecord>(
     floor: { type: String, required: true, trim: true, maxlength: 40 },
     block: { type: String, trim: true, maxlength: 60 },
     capacity: { type: Number, required: true, min: 1, max: 50 },
+    occupiedCount: { type: Number, required: true, min: 0, default: 0 },
   },
   { timestamps: true },
 );

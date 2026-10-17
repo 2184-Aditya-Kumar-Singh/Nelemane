@@ -8,6 +8,8 @@ export const UPLOAD_PURPOSES = [
   "PG_GALLERY",
   "ROOM_TYPE_PHOTO",
   "OWNER_PAYMENT_QR",
+  "TENANT_PROFILE",
+  "TENANT_AADHAAR",
 ] as const;
 export type UploadPurpose = (typeof UPLOAD_PURPOSES)[number];
 

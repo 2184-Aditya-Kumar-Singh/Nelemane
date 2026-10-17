@@ -7,6 +7,8 @@ import { connectToDatabase } from "@/server/db/connection";
 import { AuditLogModel } from "@/server/db/models/audit-log";
 import { RoomModel } from "@/server/db/models/room";
 import { RoomTypeModel } from "@/server/db/models/room-type";
+import { TenantModel } from "@/server/db/models/tenant";
+import { getStorageProvider } from "@/server/providers/storage";
 
 function isDuplicateKeyError(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
@@ -18,8 +20,18 @@ export async function GET() {
     const pgId = requirePgScope(user);
     await connectToDatabase();
     const rooms = await RoomModel.find({ pgId }).sort({ floor: 1, block: 1, roomNumber: 1 }).populate("roomTypeId", "name sharing ac attachedBath rent deposit").lean();
+    const tenantRecords = await TenantModel.find({ pgId, status: "ACTIVE", roomId: { $in: rooms.map((room) => room._id) } }).sort({ name: 1 }).select("name roomId profilePhoto").lean();
+    const occupantsByRoom = new Map<string, Array<{ name: string; photoUrl: string }>>();
+    for (const tenant of tenantRecords) {
+      const roomId = tenant.roomId.toString();
+      const occupants = occupantsByRoom.get(roomId) ?? [];
+      const photoUrl = tenant.profilePhoto ? await getStorageProvider().getSignedUrl(tenant.profilePhoto.publicId, 60).catch(() => "") : "";
+      occupants.push({ name: tenant.name, photoUrl });
+      occupantsByRoom.set(roomId, occupants);
+    }
     return Response.json({ rooms: rooms.map((room) => {
       const type = room.roomTypeId as unknown as { _id?: Types.ObjectId; name?: string; sharing?: number; ac?: boolean; attachedBath?: boolean; rent?: number; deposit?: number } | null;
+      const occupants = occupantsByRoom.get(room._id.toString()) ?? [];
       return {
         id: room._id.toString(),
         roomNumber: room.roomNumber,
@@ -29,9 +41,9 @@ export async function GET() {
         roomType: type && typeof type === "object" && type.name
           ? { id: type._id?.toString() ?? "", name: type.name, sharing: type.sharing ?? 1, ac: Boolean(type.ac), attachedBath: Boolean(type.attachedBath), rentPaise: type.rent ?? 0, depositPaise: type.deposit ?? 0 }
           : null,
-        occupiedCount: 0,
-        freeBeds: room.capacity,
-        occupants: [],
+        occupiedCount: occupants.length,
+        freeBeds: Math.max(0, room.capacity - occupants.length),
+        occupants,
       };
     }) });
   } catch (error) {

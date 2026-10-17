@@ -10,7 +10,7 @@ export type OwnerPhotoValue = {
   caption?: string;
 };
 
-export type OwnerUploadPurpose = "OWNER_PG_PROFILE" | "PG_GALLERY" | "ROOM_TYPE_PHOTO" | "OWNER_PAYMENT_QR";
+export type OwnerUploadPurpose = "OWNER_PG_PROFILE" | "PG_GALLERY" | "ROOM_TYPE_PHOTO" | "OWNER_PAYMENT_QR" | "TENANT_PROFILE" | "TENANT_AADHAAR";
 
 export function PhotoUpload({
   label,

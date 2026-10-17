@@ -82,3 +82,24 @@ Status: complete.
 - `pnpm run build` — passed with `.env.local` loaded and generated output isolated in `.next-phase4/` because existing Next.js output folders are ACL-protected. The committed Next.js config uses the standard `.next/` directory.
 
 Next: Phase 5 — tenant management.
+
+## Phase 5 — Tenant management
+
+Status: complete.
+
+- [x] Added the Tenant model and indexes with room, resident account, parents, rent/deposit, join/vacate dates, profile photo and consented Aadhaar image references.
+- [x] Added transactional owner tenant creation with atomic bed-capacity reservation, a TENANT user, first-login password change and email/SMS credential delivery controls.
+- [x] Added private tenant profile and Aadhaar uploads; Aadhaar previews use short-lived signed URLs and every issued view link is audit-logged.
+- [x] Added tenant list and detail pages, room defaults, resident profile/contact information and Aadhaar access controls.
+- [x] Added typed-name move-out confirmation, account disablement, room-bed release, optional immediate Aadhaar deletion, and tenant email/SMS notification.
+- [x] Added per-tenant admin reports with email notification and connected live occupants/photos/free-bed counts to the owner dashboard and room board.
+- [x] Updated the 30-day PG purge to remove tenant, room and room-type records and their stored images.
+- [x] Passed typecheck, lint and production build; committed the completed phase.
+
+### Verification
+
+- `pnpm run typecheck` — passed.
+- `pnpm run lint` — passed.
+- `pnpm run build` — passed with `.env.local` loaded and generated output isolated in `.next-phase5-final/`; the committed Next.js config uses the standard `.next/` directory.
+
+Next: Phase 6 — rent and payments.
