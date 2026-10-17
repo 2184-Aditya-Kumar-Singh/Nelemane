@@ -9,10 +9,14 @@ import { AuditLogModel } from "@/server/db/models/audit-log";
 import { PgModel } from "@/server/db/models/pg";
 import { PaymentModel } from "@/server/db/models/payment";
 import { PaymentSubmissionQuotaModel } from "@/server/db/models/payment-submission-quota";
+import { MenuModel } from "@/server/db/models/menu";
+import { ReviewModel } from "@/server/db/models/review";
 import { RentChargeModel } from "@/server/db/models/rent-charge";
 import { RoomModel } from "@/server/db/models/room";
 import { RoomTypeModel } from "@/server/db/models/room-type";
 import { TenantModel } from "@/server/db/models/tenant";
+import { TicketCreationQuotaModel } from "@/server/db/models/ticket-creation-quota";
+import { TicketModel } from "@/server/db/models/ticket";
 import { TemporaryAssetModel } from "@/server/db/models/temporary-asset";
 import { UserModel } from "@/server/db/models/user";
 import { getStorageProvider } from "@/server/providers/storage";
@@ -70,6 +74,10 @@ export async function POST(request: Request) {
               RentChargeModel.deleteMany({ pgId: pg._id }, { session }),
               PaymentModel.deleteMany({ pgId: pg._id }, { session }),
               PaymentSubmissionQuotaModel.deleteMany({ tenantId: { $in: tenants.map((tenant) => tenant._id) } }, { session }),
+              TicketCreationQuotaModel.deleteMany({ tenantId: { $in: tenants.map((tenant) => tenant._id) } }, { session }),
+              TicketModel.deleteMany({ pgId: pg._id }, { session }),
+              ReviewModel.deleteMany({ pgId: pg._id }, { session }),
+              MenuModel.deleteMany({ pgId: pg._id }, { session }),
               UserModel.deleteMany({ pgId: pg._id }, { session }),
               PgModel.deleteOne({ _id: pg._id }, { session }),
             ]);

@@ -3,7 +3,7 @@ import { signIn } from "@/auth";
 import { APP_NAME } from "@/config/app";
 
 interface LoginPageProps {
-  searchParams: Promise<{ error?: string; changed?: string }>;
+  searchParams: Promise<{ error?: string; changed?: string; callbackUrl?: string }>;
 }
 
 const inputClassName =
@@ -16,10 +16,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   async function login(formData: FormData) {
     "use server";
 
+    const requested = String(formData.get("callbackUrl") ?? "");
+    const redirectTo = requested.startsWith("/") && !requested.startsWith("//") && !requested.includes("\\")
+      ? requested
+      : "/dashboard";
+
     await signIn("credentials", {
       email: formData.get("email"),
       password: formData.get("password"),
-      redirectTo: "/dashboard",
+      redirectTo,
     });
   }
 
@@ -50,6 +55,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       ) : null}
 
       <form action={login} className="mt-7 space-y-5">
+        {params.callbackUrl && <input type="hidden" name="callbackUrl" value={params.callbackUrl} />}
         <label className="block space-y-2 text-sm font-semibold">
           Email address
           <input

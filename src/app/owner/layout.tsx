@@ -12,6 +12,8 @@ const navigation = [
   { href: "/owner/tenants", label: "Tenants" },
   { href: "/owner/rent", label: "Rent ledger" },
   { href: "/owner/payment-verifications", label: "Payment verifications" },
+  { href: "/owner/menu", label: "Weekly menu" },
+  { href: "/owner/tickets", label: "Maintenance tickets" },
 ];
 
 export default async function OwnerLayout({ children }: Readonly<{ children: ReactNode }>) {

@@ -10,7 +10,7 @@ import { getStorageProvider } from "@/server/providers/storage";
 
 export const runtime = "nodejs";
 
-const purposeSchema = z.enum(["OWNER_PG_PROFILE", "PG_GALLERY", "ROOM_TYPE_PHOTO", "OWNER_PAYMENT_QR", "TENANT_PROFILE", "TENANT_AADHAAR", "OWNER_PAYMENT_PROOF"]);
+const purposeSchema = z.enum(["OWNER_PG_PROFILE", "PG_GALLERY", "ROOM_TYPE_PHOTO", "OWNER_PAYMENT_QR", "TENANT_PROFILE", "TENANT_AADHAAR", "OWNER_PAYMENT_PROOF", "OWNER_TICKET_PROOF"]);
 
 function detectImageContentType(bytes: Uint8Array): string | null {
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     if (!pg) return Response.json({ error: { message: "Your PG account is not available" } }, { status: 404 });
 
     const purpose: UploadPurpose = purposeResult.data;
-    const privateAsset = purpose === "OWNER_PAYMENT_QR" || purpose === "TENANT_PROFILE" || purpose === "TENANT_AADHAAR" || purpose === "OWNER_PAYMENT_PROOF";
+    const privateAsset = purpose === "OWNER_PAYMENT_QR" || purpose === "TENANT_PROFILE" || purpose === "TENANT_AADHAAR" || purpose === "OWNER_PAYMENT_PROOF" || purpose === "OWNER_TICKET_PROOF";
     const stored = await getStorageProvider().upload({
       bytes,
       contentType,

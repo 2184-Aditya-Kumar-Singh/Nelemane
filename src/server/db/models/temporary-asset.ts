@@ -12,6 +12,8 @@ export const UPLOAD_PURPOSES = [
   "TENANT_AADHAAR",
   "TENANT_PAYMENT_SCREENSHOT",
   "OWNER_PAYMENT_PROOF",
+  "TICKET_IMAGE",
+  "OWNER_TICKET_PROOF",
 ] as const;
 export type UploadPurpose = (typeof UPLOAD_PURPOSES)[number];
 

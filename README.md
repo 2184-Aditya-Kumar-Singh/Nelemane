@@ -32,6 +32,12 @@ Tenants open `/tenant/rent` to review rent and payment history. The charge page 
 
 Rent charges are created idempotently for active residents for the current month. Vercel invokes `/api/cron/rent` daily at 03:30 UTC (09:00 Asia/Kolkata) using the schedule in `vercel.json`. Set the same strong `CRON_SECRET` in the deployment's environment variables. The job opens the configured rent window, marks charges overdue after the window ends, and sends deduplicated email/SMS reminders using each PG's channel settings. MSG91 production SMS requires an approved DLT sender ID and transactional flow template; configure the matching auth key, sender ID and template ID in the deployment environment. Configure APP_URL, database, encryption, Cloudinary and email variables in the Vercel project as well as in local `.env.local`; local environment files are ignored by Git.
 
+## Menus, maintenance and resident feedback
+
+Owners edit the repeating Monday–Sunday meal plan at `/owner/menu`; tenants see today's meals on `/tenant` and the full week at `/tenant/menu` (day boundaries use Asia/Kolkata). Tenants can create up to five maintenance requests per day with up to five private photos per ticket at `/tenant/tickets`. Owners track status and add a resolution note with proof photos in `/owner/tickets`. A repair remains open for tenant approval; the resident can approve it or reopen it with a comment. Approval email links are single-use, hashed in storage, and expire after seven days. Ticket images are served through authenticated, short-lived signed URLs.
+
+Residents can update their phone and profile picture and edit a one-per-PG rating from `/tenant/profile`. Rating averages are stored on the PG record for discovery. Tenant and owner ticket changes, private image access, menu edits, and reviews are recorded in the audit log.
+
 ## Environment
 
 Every environment variable is documented in `.env.example`. MongoDB, Auth.js, cron, encryption and Super Admin values are required. Cloudinary and Resend/SMTP settings enable production storage and email; MSG91 settings enable transactional SMS. In production, missing storage or email credentials cause configuration validation to fail rather than enabling development fallbacks.

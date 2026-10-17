@@ -20,6 +20,9 @@ export default async function TenantLayout({ children }: Readonly<{ children: Re
           <nav aria-label="Resident navigation" className="flex flex-wrap gap-2">
             <Link href="/tenant" className="hover:bg-muted min-h-10 rounded-xl px-3 py-2 text-sm font-semibold">Overview</Link>
             <Link href="/tenant/rent" className="hover:bg-muted min-h-10 rounded-xl px-3 py-2 text-sm font-semibold">Rent & payments</Link>
+            <Link href="/tenant/menu" className="hover:bg-muted min-h-10 rounded-xl px-3 py-2 text-sm font-semibold">Weekly menu</Link>
+            <Link href="/tenant/tickets" className="hover:bg-muted min-h-10 rounded-xl px-3 py-2 text-sm font-semibold">Maintenance</Link>
+            <Link href="/tenant/profile" className="hover:bg-muted min-h-10 rounded-xl px-3 py-2 text-sm font-semibold">My profile</Link>
             <Link href="/dashboard" className="text-foreground/60 hover:bg-muted min-h-10 rounded-xl px-3 py-2 text-sm font-semibold">Account</Link>
           </nav>
         </div>

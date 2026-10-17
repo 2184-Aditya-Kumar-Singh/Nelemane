@@ -12,6 +12,7 @@ import { RentChargeModel } from "@/server/db/models/rent-charge";
 import { PaymentModel } from "@/server/db/models/payment";
 import { ensureRentChargesForMonth } from "@/server/payments/charges";
 import { getIstMonthKey } from "@/server/payments/dates";
+import { TicketModel } from "@/server/db/models/ticket";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +33,13 @@ export default async function OwnerDashboardPage() {
   if (!pg) notFound();
   const currentMonth = getIstMonthKey();
   await ensureRentChargesForMonth({ pgId, month: currentMonth, window: pg.rentWindow });
-  const [rentSummary, pendingPaymentCount] = await Promise.all([
+  const [rentSummary, pendingPaymentCount, openTicketCount] = await Promise.all([
     RentChargeModel.aggregate<{ collected: number; overdue: number }>([
       { $match: { pgId: new Types.ObjectId(pgId), month: currentMonth } },
       { $group: { _id: null, collected: { $sum: "$paidAmount" }, overdue: { $sum: { $cond: [{ $eq: ["$status", "OVERDUE"] }, { $subtract: ["$amount", "$paidAmount"] }, 0] } } } },
     ]),
     PaymentModel.countDocuments({ pgId, source: "TENANT", status: "PENDING" }),
+    TicketModel.countDocuments({ pgId, status: { $in: ["OPEN", "IN_PROGRESS", "REOPENED", "RESOLVED_AWAITING_APPROVAL"] } }),
   ]);
   const missing = [
     !pg.profilePhoto,
@@ -56,6 +58,7 @@ export default async function OwnerDashboardPage() {
     { title: "Active tenants", value: tenantCount, href: "/owner/tenants" },
     { title: "Collected this month", value: new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format((rentSummary[0]?.collected ?? 0) / 100), href: "/owner/rent" },
     { title: "Pending verification", value: pendingPaymentCount, href: "/owner/payment-verifications" },
+    { title: "Open maintenance tickets", value: openTicketCount, href: "/owner/tickets" },
     { title: "Overdue this month", value: new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format((rentSummary[0]?.overdue ?? 0) / 100), href: "/owner/rent" },
     { title: "Profile completeness", value: `${completeness}%`, href: "/owner/pg-details" },
   ];

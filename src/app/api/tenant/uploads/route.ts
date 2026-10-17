@@ -21,18 +21,21 @@ export async function POST(request: Request) {
   try {
     const { user, pgId } = await requireActiveTenant();
     const form = await request.formData();
+    const requestedPurpose = form.get("purpose");
+    const purpose = requestedPurpose === "TICKET_IMAGE" || requestedPurpose === "TENANT_PROFILE" ? requestedPurpose : "TENANT_PAYMENT_SCREENSHOT";
     const file = form.get("file");
-    if (!(file instanceof File)) return Response.json({ error: { message: "Choose a payment screenshot" } }, { status: 400 });
+    if (!(file instanceof File)) return Response.json({ error: { message: "Choose an image" } }, { status: 400 });
     if (file.size < 1 || file.size > 5 * 1024 * 1024) return Response.json({ error: { message: "Screenshots must be between 1 byte and 5 MB" } }, { status: 400 });
     const bytes = Buffer.from(await file.arrayBuffer());
     const contentType = detectImageContentType(bytes);
     if (!contentType) return Response.json({ error: { message: "Upload a valid JPEG, PNG or WebP image" } }, { status: 400 });
     if (!await PgModel.exists({ _id: pgId, status: "ACTIVE" })) return Response.json({ error: { message: "Your PG account is not available" } }, { status: 404 });
-    const stored = await getStorageProvider().upload({ bytes, contentType, resourceType: "image", visibility: "private", folder: `nelemane/pgs/${pgId}/payment-submissions` });
+    const folder = purpose === "TICKET_IMAGE" ? "tickets" : purpose === "TENANT_PROFILE" ? "tenant-profiles" : "payment-submissions";
+    const stored = await getStorageProvider().upload({ bytes, contentType, resourceType: "image", visibility: "private", folder: `nelemane/pgs/${pgId}/${folder}` });
     let asset;
     try {
       asset = await TemporaryAssetModel.create({
-        ownerUserId: new Types.ObjectId(user.id), pgId: new Types.ObjectId(pgId), purpose: "TENANT_PAYMENT_SCREENSHOT",
+        ownerUserId: new Types.ObjectId(user.id), pgId: new Types.ObjectId(pgId), purpose,
         publicId: stored.publicId, url: stored.url, resourceType: stored.resourceType, visibility: "private",
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
