@@ -6,6 +6,7 @@ import { connectToDatabase } from "@/server/db/connection";
 import { TemporaryAssetModel, type UploadPurpose } from "@/server/db/models/temporary-asset";
 import { getStorageProvider } from "@/server/providers/storage";
 import { hasSameOrigin } from "@/server/auth/request-origin";
+import { consumeUploadRateLimit, UPLOAD_LIMIT_PER_WINDOW } from "@/server/uploads/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
 
   try {
     const admin = await requireRoles("SUPER_ADMIN");
+    if (!await consumeUploadRateLimit({ scope: "admin", userId: admin.id })) return Response.json({ error: { message: `Upload limit reached. Try again later (maximum ${UPLOAD_LIMIT_PER_WINDOW} uploads per 15 minutes).` } }, { status: 429 });
     const form = await request.formData();
     const purposeResult = purposeSchema.safeParse(form.get("purpose"));
     const file = form.get("file");

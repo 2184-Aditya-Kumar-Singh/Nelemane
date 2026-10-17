@@ -6,6 +6,7 @@ import { hasSameOrigin } from "@/server/auth/request-origin";
 import { PgModel } from "@/server/db/models/pg";
 import { TemporaryAssetModel } from "@/server/db/models/temporary-asset";
 import { getStorageProvider } from "@/server/providers/storage";
+import { consumeUploadRateLimit, UPLOAD_LIMIT_PER_WINDOW } from "@/server/uploads/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
   if (!hasSameOrigin(request)) return Response.json({ error: { message: "Request origin is not allowed" } }, { status: 403 });
   try {
     const { user, pgId } = await requireActiveTenant();
+    if (!await consumeUploadRateLimit({ scope: "tenant", userId: user.id })) return Response.json({ error: { message: `Upload limit reached. Try again later (maximum ${UPLOAD_LIMIT_PER_WINDOW} uploads per 15 minutes).` } }, { status: 429 });
     const form = await request.formData();
     const requestedPurpose = form.get("purpose");
     const purpose = requestedPurpose === "TICKET_IMAGE" || requestedPurpose === "TENANT_PROFILE" ? requestedPurpose : "TENANT_PAYMENT_SCREENSHOT";

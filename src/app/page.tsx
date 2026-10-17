@@ -151,7 +151,7 @@ export default async function HomePage() {
 
           <div className="relative aspect-[0.92] overflow-hidden rounded-[2.5rem] bg-[#d5e5d3] shadow-2xl shadow-indigo-950/15 sm:aspect-[1.02]">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_25%_10%,rgba(255,255,255,0.9),transparent_42%),linear-gradient(145deg,#dce9da_0%,#b7cdb8_48%,#93ac9a_100%)]" />
-            <div className="absolute top-12 -right-12 size-64 rounded-full border-[1.5rem] border-white/25" />
+            <div className="gentle-float absolute top-12 -right-12 size-64 rounded-full border-[1.5rem] border-white/25" />
             <div className="absolute bottom-6 -left-16 size-72 rounded-full border-[2rem] border-emerald-950/[0.06]" />
 
             <div className="absolute bottom-0 left-1/2 h-[82%] w-[72%] -translate-x-1/2 rounded-t-[9rem] bg-[#f4e7d2] shadow-2xl shadow-emerald-950/10">
@@ -165,7 +165,7 @@ export default async function HomePage() {
               <div className="absolute -right-12 bottom-0 h-[46%] w-16 rounded-t-full bg-emerald-950/25" />
             </div>
 
-            <div className="text-primary absolute top-11 left-9 grid size-12 place-items-center rounded-2xl bg-white/75 shadow-lg backdrop-blur">
+            <div className="gentle-float text-primary absolute top-11 left-9 grid size-12 place-items-center rounded-2xl bg-white/75 shadow-lg backdrop-blur">
               <Leaf aria-hidden="true" className="size-6" />
             </div>
             <div className="bg-accent text-primary absolute top-32 right-8 grid size-10 place-items-center rounded-full shadow-lg">

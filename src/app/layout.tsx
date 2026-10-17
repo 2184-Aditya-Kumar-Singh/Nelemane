@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import { APP_NAME, APP_TAGLINE } from "@/config/app";
+import { ThemeToggle } from "@/app/_components/theme-toggle";
 import "@/app/globals.css";
 
 export const metadata: Metadata = {
@@ -20,7 +21,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#fffbf5",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fffbf5" },
+    { media: "(prefers-color-scheme: dark)", color: "#111322" },
+  ],
   width: "device-width",
   initialScale: 1,
 };
@@ -29,8 +33,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en-IN">
-      <body>{children}</body>
+    <html lang="en-IN" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `try{const t=localStorage.getItem("nelemane-theme");if(t==="dark"||t==="light"){document.documentElement.classList.toggle("dark",t==="dark");document.documentElement.classList.toggle("light",t==="light")}}catch{}` }} />
+      </head>
+      <body>{children}<ThemeToggle /></body>
     </html>
   );
 }

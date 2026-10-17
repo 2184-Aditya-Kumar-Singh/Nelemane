@@ -7,6 +7,7 @@ import { connectToDatabase } from "@/server/db/connection";
 import { PgModel } from "@/server/db/models/pg";
 import { TemporaryAssetModel, type UploadPurpose } from "@/server/db/models/temporary-asset";
 import { getStorageProvider } from "@/server/providers/storage";
+import { consumeUploadRateLimit, UPLOAD_LIMIT_PER_WINDOW } from "@/server/uploads/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireRoles("PG_OWNER");
     const pgId = requirePgScope(user);
+    if (!await consumeUploadRateLimit({ scope: "owner", userId: user.id })) return Response.json({ error: { message: `Upload limit reached. Try again later (maximum ${UPLOAD_LIMIT_PER_WINDOW} uploads per 15 minutes).` } }, { status: 429 });
     const form = await request.formData();
     const purposeResult = purposeSchema.safeParse(form.get("purpose"));
     const file = form.get("file");

@@ -1,0 +1,3 @@
+export default function LoadingPage() {
+  return <main aria-busy="true" aria-label="Loading page" className="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-12"><div className="animate-pulse"><div className="h-3 w-28 rounded bg-muted" /><div className="mt-4 h-10 max-w-lg rounded-xl bg-muted" /><div className="mt-3 h-4 max-w-xl rounded bg-muted" /><div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"><div className="aspect-[1.55] rounded-3xl bg-muted" /><div className="aspect-[1.55] rounded-3xl bg-muted" /><div className="aspect-[1.55] rounded-3xl bg-muted" /></div></div><span className="sr-only">Loading…</span></main>;
+}
