@@ -1,7 +1,7 @@
 import { model, models, Schema, type Model } from "mongoose";
 
 export type NotificationChannel = "EMAIL" | "SMS";
-export type NotificationStatus = "SENT" | "FAILED" | "SKIPPED";
+export type NotificationStatus = "SENDING" | "SENT" | "FAILED" | "SKIPPED";
 
 export interface NotificationLogRecord {
   to: string;
@@ -20,7 +20,7 @@ const notificationLogSchema = new Schema<NotificationLogRecord>(
     template: { type: String, required: true, trim: true },
     status: {
       type: String,
-      enum: ["SENT", "FAILED", "SKIPPED"],
+      enum: ["SENDING", "SENT", "FAILED", "SKIPPED"],
       required: true,
     },
     providerId: { type: String },

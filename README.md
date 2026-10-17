@@ -24,6 +24,14 @@ PG owners can open `/owner` for their workspace. `/owner/pg-details` manages the
 
 Use `/owner/tenants` to add a resident, inspect their details, report a problem to the platform administrator, or mark a resident as vacated. New accounts receive a temporary password by email and, when configured, SMS; first sign-in requires a password change. Profile and Aadhaar images are stored privately. Aadhaar is optional, requires consent, and can be viewed by the PG owner through an audit-logged link that expires after 60 seconds. Moving a resident out disables their account, frees the bed, keeps their record for future payment history, and optionally deletes the Aadhaar image immediately.
 
+## Rent and payments
+
+Owners use `/owner/rent` to review monthly charges, collection, outstanding and overdue amounts, dues grouped by room, filtered resident ledgers, CSV exports, direct cash/UPI/bank records and rent reminders. `/owner/payment-verifications` is the tenant-submission queue; the pending badge in the owner navigation and dashboard link to it. Owners approve the amount actually received or reject a submission with a reason. Approval updates the charge in a MongoDB transaction and creates a printable tenant receipt.
+
+Tenants open `/tenant/rent` to review rent and payment history. The charge page shows the PG's private QR, UPI ID and bank instructions. The tenant pays the owner directly outside Nelemane, then registers the transaction and a private screenshot for owner verification. Nelemane does not use a payment gateway. Pending submissions can be cancelled by the tenant; rejected submissions show the owner's reason so corrected details can be registered. Screenshot access uses short-lived signed URLs and is audit-logged.
+
+Rent charges are created idempotently for active residents for the current month. Vercel invokes `/api/cron/rent` daily at 03:30 UTC (09:00 Asia/Kolkata) using the schedule in `vercel.json`. Set the same strong `CRON_SECRET` in the deployment's environment variables. The job opens the configured rent window, marks charges overdue after the window ends, and sends deduplicated email/SMS reminders using each PG's channel settings. MSG91 production SMS requires an approved DLT sender ID and transactional flow template; configure the matching auth key, sender ID and template ID in the deployment environment. Configure APP_URL, database, encryption, Cloudinary and email variables in the Vercel project as well as in local `.env.local`; local environment files are ignored by Git.
+
 ## Environment
 
 Every environment variable is documented in `.env.example`. MongoDB, Auth.js, cron, encryption and Super Admin values are required. Cloudinary and Resend/SMTP settings enable production storage and email; MSG91 settings enable transactional SMS. In production, missing storage or email credentials cause configuration validation to fail rather than enabling development fallbacks.

@@ -62,6 +62,14 @@ export default async function DashboardPage() {
               Open PG workspace
             </Link>
           )}
+          {user.role === "TENANT" && (
+            <Link
+              href="/tenant"
+              className="bg-primary text-primary-foreground mt-4 inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold hover:opacity-90"
+            >
+              Open resident account
+            </Link>
+          )}
         </div>
 
         <form action={logout} className="mt-7">

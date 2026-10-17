@@ -8,6 +8,10 @@ import { PgModel } from "@/server/db/models/pg";
 import { RoomModel } from "@/server/db/models/room";
 import { RoomTypeModel } from "@/server/db/models/room-type";
 import { TenantModel } from "@/server/db/models/tenant";
+import { RentChargeModel } from "@/server/db/models/rent-charge";
+import { PaymentModel } from "@/server/db/models/payment";
+import { ensureRentChargesForMonth } from "@/server/payments/charges";
+import { getIstMonthKey } from "@/server/payments/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +30,15 @@ export default async function OwnerDashboardPage() {
     TenantModel.countDocuments({ pgId, status: "ACTIVE" }),
   ]);
   if (!pg) notFound();
+  const currentMonth = getIstMonthKey();
+  await ensureRentChargesForMonth({ pgId, month: currentMonth, window: pg.rentWindow });
+  const [rentSummary, pendingPaymentCount] = await Promise.all([
+    RentChargeModel.aggregate<{ collected: number; overdue: number }>([
+      { $match: { pgId: new Types.ObjectId(pgId), month: currentMonth } },
+      { $group: { _id: null, collected: { $sum: "$paidAmount" }, overdue: { $sum: { $cond: [{ $eq: ["$status", "OVERDUE"] }, { $subtract: ["$amount", "$paidAmount"] }, 0] } } } },
+    ]),
+    PaymentModel.countDocuments({ pgId, source: "TENANT", status: "PENDING" }),
+  ]);
   const missing = [
     !pg.profilePhoto,
     pg.description.trim().length < 40,
@@ -41,6 +54,9 @@ export default async function OwnerDashboardPage() {
     { title: "Rooms", value: roomCount, href: "/owner/rooms" },
     { title: "Beds configured", value: beds[0]?.total ?? 0, href: "/owner/rooms" },
     { title: "Active tenants", value: tenantCount, href: "/owner/tenants" },
+    { title: "Collected this month", value: new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format((rentSummary[0]?.collected ?? 0) / 100), href: "/owner/rent" },
+    { title: "Pending verification", value: pendingPaymentCount, href: "/owner/payment-verifications" },
+    { title: "Overdue this month", value: new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format((rentSummary[0]?.overdue ?? 0) / 100), href: "/owner/rent" },
     { title: "Profile completeness", value: `${completeness}%`, href: "/owner/pg-details" },
   ];
 
@@ -51,7 +67,7 @@ export default async function OwnerDashboardPage() {
         <Link href="/owner/pg-details" className="bg-primary text-primary-foreground inline-flex min-h-11 items-center justify-center rounded-xl px-5 text-sm font-semibold">Edit PG details</Link>
       </div>
       {pg.subscription.status !== "ACTIVE" && <p className="mt-6 rounded-xl bg-amber-50 p-4 text-sm text-amber-950">Your platform subscription is {pg.subscription.status.toLowerCase()}. Contact Nelemane support if you need help.</p>}
-      <section aria-label="PG setup overview" className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <section aria-label="PG setup overview" className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cardData.map((card) => <Link key={card.title} href={card.href} className="border-border rounded-2xl border bg-white p-5 shadow-sm transition-transform hover:-translate-y-0.5"><p className="text-foreground/55 text-sm font-medium">{card.title}</p><p className="font-display text-primary mt-3 text-4xl font-medium">{typeof card.value === "number" ? card.value.toLocaleString("en-IN") : card.value}</p><span className="text-primary mt-3 inline-block text-xs font-semibold">Manage →</span></Link>)}
       </section>
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
