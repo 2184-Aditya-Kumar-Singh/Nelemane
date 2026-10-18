@@ -16,7 +16,7 @@ export async function PUT(request: Request) {
     const parsed = reviewSchema.safeParse(await request.json() as unknown);
     if (!parsed.success) return Response.json({ error: { message: "Choose a rating from 1 to 5" } }, { status: 400 });
     await connectToDatabase();
-    await ReviewModel.findOneAndUpdate({ pgId, tenantId: tenant._id }, { $set: { rating: parsed.data.rating, comment: parsed.data.comment || undefined, editedAt: new Date() }, $setOnInsert: { pgId: new Types.ObjectId(pgId), tenantId: tenant._id } }, { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true });
+    await ReviewModel.findOneAndUpdate({ pgId, tenantId: tenant._id }, { $set: { rating: parsed.data.rating, comment: parsed.data.comment || undefined, editedAt: new Date() }, $setOnInsert: { pgId: new Types.ObjectId(pgId), tenantId: tenant._id } }, { upsert: true, returnDocument: "after", runValidators: true, setDefaultsOnInsert: true });
     const [summary] = await ReviewModel.aggregate<{ average: number; count: number }>([
       { $match: { pgId: new Types.ObjectId(pgId) } },
       { $group: { _id: null, average: { $avg: "$rating" }, count: { $sum: 1 } } },

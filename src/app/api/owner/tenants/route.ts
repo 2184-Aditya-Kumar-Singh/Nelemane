@@ -80,7 +80,7 @@ export async function POST(request: Request) {
         const room = await RoomModel.findOneAndUpdate(
           { _id: parsed.data.roomId, pgId, $expr: { $lt: [{ $ifNull: ["$occupiedCount", 0] }, "$capacity"] } },
           { $inc: { occupiedCount: 1 } },
-          { new: true, session },
+          { returnDocument: "after", session },
         ).lean();
         if (!room) {
           const exists = await RoomModel.exists({ _id: parsed.data.roomId, pgId }).session(session);

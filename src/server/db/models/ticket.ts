@@ -1,4 +1,6 @@
-import { model, models, Schema, type Model, type Types } from "mongoose";
+import mongoose, { type Model, type Types } from "mongoose";
+
+const { model, models, Schema } = mongoose;
 
 export const TICKET_CATEGORIES = ["ELECTRICAL", "PLUMBING", "WIFI", "CLEANING", "FOOD", "FURNITURE", "OTHER"] as const;
 export type TicketCategory = (typeof TICKET_CATEGORIES)[number];

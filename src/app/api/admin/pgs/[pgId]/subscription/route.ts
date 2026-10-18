@@ -29,7 +29,7 @@ export async function PATCH(
           isListed: parsed.data.status === "ACTIVE",
         },
       },
-      { new: true, runValidators: true },
+      { returnDocument: "after", runValidators: true },
     ).lean();
     if (!pg) return Response.json({ error: { message: "This PG cannot change subscription status" } }, { status: 404 });
 

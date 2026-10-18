@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       $set: { passwordHash, mustChangePassword: false },
       $unset: { passwordResetTokenHash: 1, passwordResetExpiresAt: 1 },
     },
-    { new: true },
+    { returnDocument: "after" },
   )
     .select("_id")
     .lean();

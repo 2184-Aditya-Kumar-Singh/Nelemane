@@ -90,7 +90,7 @@ export async function POST(request: Request) {
 
         const dayKey = getIstDateParts().key;
         let quota = await PaymentSubmissionQuotaModel.findOneAndUpdate(
-          { tenantId: tenant._id, dayKey, count: { $lt: 10 } }, { $inc: { count: 1 } }, { new: true, session },
+          { tenantId: tenant._id, dayKey, count: { $lt: 10 } }, { $inc: { count: 1 } }, { returnDocument: "after", session },
         );
         if (!quota) {
           if (await PaymentSubmissionQuotaModel.exists({ tenantId: tenant._id, dayKey }).session(session)) throw new Error("DAILY_PAYMENT_LIMIT");

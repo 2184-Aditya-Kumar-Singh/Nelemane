@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       await session.withTransaction(async () => {
         const dayKey = getIstDateParts().key;
         let quota = await TicketCreationQuotaModel.findOneAndUpdate(
-          { tenantId: tenant._id, dayKey, count: { $lt: 5 } }, { $inc: { count: 1 } }, { new: true, session },
+          { tenantId: tenant._id, dayKey, count: { $lt: 5 } }, { $inc: { count: 1 } }, { returnDocument: "after", session },
         );
         if (!quota) {
           if (await TicketCreationQuotaModel.exists({ tenantId: tenant._id, dayKey }).session(session)) throw new Error("DAILY_TICKET_LIMIT");

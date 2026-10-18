@@ -32,7 +32,7 @@ export async function PUT(request: Request) {
     if (!await PgModel.exists({ _id: pgId, status: "ACTIVE" })) return Response.json({ error: { message: "Your PG account is not available" } }, { status: 404 });
     const menu = await MenuModel.findOneAndUpdate(
       { pgId }, { $set: { week: parsed.data.week, updatedBy: user.id } },
-      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true },
+      { returnDocument: "after", upsert: true, runValidators: true, setDefaultsOnInsert: true },
     ).lean();
     await AuditLogModel.create({ actorId: user.id, action: "WEEKLY_MENU_UPDATED", entity: "Menu", entityId: menu?._id, meta: { pgId } });
     return Response.json({ saved: true, week: menu?.week });

@@ -7,7 +7,7 @@ Nelemane (ನೆಲೆಮನೆ) is a PG management and discovery platform for B
 1. Install Node.js 20.9 or newer.
 2. Copy `.env.example` to `.env.local` and fill in local credentials.
 3. Install dependencies with `pnpm install` or `npm install`.
-4. Create the first Super Admin with `pnpm seed` (or `npm run seed`).
+4. Create the first Super Admin and local demonstration accounts with `pnpm seed` (or `npm run seed`). Point `MONGODB_URI` at a development database first; the seed refuses `NODE_ENV=production`.
 5. Run `pnpm dev` or `npm run dev`, then open `http://localhost:3000`.
 
 The upload provider uses Cloudinary when its credentials are present in `.env.local`; otherwise development uploads go to `.local-storage`, where private files are only available through short-lived signed links. Email uses configured Resend or SMTP credentials in local development and production. Without email credentials, development messages are recorded in `NotificationLog` and printed to the terminal; this fallback refuses to start in production. MSG91 SMS is used when its auth key and DLT flow template ID are configured.
@@ -15,6 +15,8 @@ The upload provider uses Cloudinary when its credentials are present in `.env.lo
 When no email service is configured, password reset links are printed by the development email provider and recorded in `NotificationLog`. When configured, email delivery uses Resend or SMTP in both local development and production. Password reset tokens are stored only as SHA-256 hashes and expire after 30 minutes.
 
 The Super Admin seed reads `ADMIN_EMAIL` and `ADMIN_INITIAL_PASSWORD` from `.env.local`. It creates the account only when that email is unused and never resets an existing account's password. The new account must change its password at first sign-in.
+
+`pnpm seed` is idempotent and also creates three public demonstration PGs, six resident accounts, rooms and room types, current-month charges, an owner-recorded sample payment, menus, maintenance tickets and reviews. Demo owner addresses use `owner.<pg-slug>@example.invalid`; resident addresses use `tenant.<pg-slug>.1@example.invalid` and `.2@example.invalid`. All new demo accounts use `ADMIN_INITIAL_PASSWORD` and require a password change at first sign-in. The demo QR images are private, nonfunctional illustrations; their instructions explicitly warn against sending money. Use a development MongoDB database and storage account when seeding.
 
 ## Authentication
 
@@ -48,7 +50,32 @@ The interface follows the operating system’s light or dark appearance by defau
 
 ## Environment
 
-Every environment variable is documented in `.env.example`. MongoDB, Auth.js, cron, encryption and Super Admin values are required. Cloudinary and Resend/SMTP settings enable production storage and email; MSG91 settings enable transactional SMS. In production, missing storage or email credentials cause configuration validation to fail rather than enabling development fallbacks.
+Every environment variable is documented in `.env.example`, including a comment for each value. MongoDB, Auth.js, cron, encryption and Super Admin values are required. Cloudinary and Resend/SMTP settings enable production storage and email; MSG91 settings enable transactional SMS. In production, missing storage or email credentials cause configuration validation to fail rather than enabling development fallbacks.
+
+### Provider setup
+
+- **Cloudinary:** create a cloud, then set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` together. Leave all three blank for local development storage. Private Aadhaar, payment, and ticket evidence uses authenticated storage and short-lived signed links.
+- **Email:** Resend is selected when `RESEND_API_KEY` is configured; verify the `EMAIL_FROM` domain first. Otherwise provide all five SMTP values (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`). Local development can leave both providers unset and uses the notification log/console fallback.
+- **SMS:** set `MSG91_AUTH_KEY`, `MSG91_SENDER_ID` and `MSG91_TEMPLATE_ID` after registering the sender and transactional DLT template with MSG91. The sender ID is provider metadata; the flow template ID and texts must match the approved DLT registration. Leave these settings blank to disable SMS.
+
+### Vercel deployment
+
+1. Create a Vercel project from the repository and keep the project root at this app.
+2. Add the production MongoDB URI, `APP_URL`, matching Auth.js secrets, a base64-encoded 32-byte `DATA_ENCRYPTION_KEY`, `CRON_SECRET`, `ADMIN_EMAIL`, and production Cloudinary and email settings in Vercel's Production environment. Add separate development/preview values where those environments need isolated data.
+3. In MongoDB Atlas, create an application database and allow connections from the Vercel deployment environment. Use a least-privilege database user. Never copy `.env.local` into a commit or deployment artifact.
+4. Deploy through Vercel. The scheduled job in `vercel.json` calls `/api/cron/rent` daily at 03:30 UTC (09:00 Asia/Kolkata); keep `CRON_SECRET` set in the same environment. Do not run the demo seed against production.
+5. Configure a verified sender for email and approved MSG91 DLT templates before enabling those channels. Check the deployment logs after the first scheduled run.
+
+### Tests and verification
+
+Install with `pnpm install --frozen-lockfile`, then run `pnpm run typecheck`, `pnpm run lint`, `pnpm run test`, `pnpm run e2e` and `pnpm run build`. Vitest covers rent status/IST rules, input validation, contact-route behavior, same-origin enforcement, payment partial approval/idempotency, and owner PG scoping. Playwright starts a separate local test server with generated test-only secrets and a test MongoDB URI; its browser checks cover login labels, public information pages, theme persistence and a 360 px layout. The automated suites do not write to the configured application database.
+
+### Short guide by role
+
+- **Super Admin:** sign in at `/login`, change the initial password, then use `/admin` to register PGs and owners, manage subscription status, review reports and inspect the audit log.
+- **PG Owner:** use `/owner/pg-details` to complete the listing, set rent and payment instructions, define room types and rooms under `/owner/rooms`, add residents under `/owner/tenants`, and manage rent, menus and maintenance from the owner workspace.
+- **Tenant:** use `/tenant` for today's menu and dues. Pay the owner directly, then submit the transaction from the charge's Pay now page. The balance changes only after owner approval. Use `/tenant/tickets` for maintenance and `/tenant/profile` for contact details and reviews.
+- **Public visitor:** explore `/pgs`, apply locality and rent filters, compare room types and contact an owner from a listed PG page. Use `/contact` for listing or support questions.
 
 ## Decisions
 
@@ -57,4 +84,6 @@ Every environment variable is documented in `.env.example`. MongoDB, Auth.js, cr
 - `APP_NAME` is a single application constant. Compatibility `NEXTAUTH_*` variables are retained alongside `AUTH_SECRET` for the selected Auth.js setup.
 - Registration drafts are kept in the current browser and omit bank account numbers. The server encrypts account numbers with AES-256-GCM before saving them. PG deletion disables associated logins and hides the PG; after 30 days, an admin can purge the record and its stored images.
 - Passwords use bcrypt with cost 12, and reset tokens use a one-way SHA-256 digest with a 30-minute expiry.
+- Seeded owner and tenant accounts share the environment-configured initial password and must change it on first sign-in; their `.invalid` addresses are reserved for local demonstration logins and cannot receive email.
+- Demo QR images are intentionally nonfunctional and carry a visible warning; seeded sample charges and payments are clearly labelled as demo records.
 - pnpm allows the `esbuild` postinstall script because the TypeScript seed runner uses `tsx`.

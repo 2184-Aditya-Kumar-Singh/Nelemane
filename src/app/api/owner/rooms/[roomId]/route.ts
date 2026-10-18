@@ -31,7 +31,7 @@ export async function PATCH(
     const room = await RoomModel.findOneAndUpdate(
       { _id: roomId, pgId, $expr: { $lte: [{ $ifNull: ["$occupiedCount", 0] }, parsed.data.capacity] } },
       { $set: { roomTypeId: parsed.data.roomTypeId, roomNumber: parsed.data.roomNumber, floor: parsed.data.floor, block: parsed.data.block || undefined, capacity: parsed.data.capacity } },
-      { new: true, runValidators: true },
+      { returnDocument: "after", runValidators: true },
     );
     if (!room) {
       const exists = await RoomModel.exists({ _id: roomId, pgId });

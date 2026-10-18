@@ -1,4 +1,6 @@
-import { model, models, Schema, type Model, type Types } from "mongoose";
+import mongoose, { type Model, type Types } from "mongoose";
+
+const { model, models, Schema } = mongoose;
 
 export const ADMIN_REPORT_STATUSES = ["OPEN", "RESOLVED"] as const;
 export type AdminReportStatus = (typeof ADMIN_REPORT_STATUSES)[number];

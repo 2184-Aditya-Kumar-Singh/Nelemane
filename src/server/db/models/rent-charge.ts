@@ -1,4 +1,6 @@
-import { model, models, Schema, type Model, type Types } from "mongoose";
+import mongoose, { type Model, type Types } from "mongoose";
+
+const { model, models, Schema } = mongoose;
 
 export const RENT_CHARGE_STATUSES = ["UNPAID", "PENDING_VERIFICATION", "PARTIALLY_PAID", "PAID", "OVERDUE"] as const;
 export type RentChargeStatus = (typeof RENT_CHARGE_STATUSES)[number];

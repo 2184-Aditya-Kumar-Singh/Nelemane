@@ -1,4 +1,6 @@
-import { model, models, Schema, type Model, type Types } from "mongoose";
+import mongoose, { type Model, type Types } from "mongoose";
+
+const { model, models, Schema } = mongoose;
 
 export const PAYMENT_SOURCES = ["TENANT", "OWNER"] as const;
 export type PaymentSource = (typeof PAYMENT_SOURCES)[number];

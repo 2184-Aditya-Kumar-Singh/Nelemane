@@ -22,7 +22,7 @@ export async function PATCH(
     const report = await AdminReportModel.findOneAndUpdate(
       { _id: reportId, status: "OPEN" },
       { $set: { status: "RESOLVED", resolvedBy: admin.id, resolvedAt: new Date(), resolutionNote: parsed.data.note } },
-      { new: true, runValidators: true },
+      { returnDocument: "after", runValidators: true },
     ).lean();
     if (!report) return Response.json({ error: { message: "Report is already resolved or unavailable" } }, { status: 404 });
     await AuditLogModel.create({

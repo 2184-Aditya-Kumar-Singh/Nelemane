@@ -1,4 +1,6 @@
-import { model, models, Schema, type Model, type Types } from "mongoose";
+import mongoose, { type Model, type Types } from "mongoose";
+
+const { model, models, Schema } = mongoose;
 
 export const MENU_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 export const MENU_MEALS = ["breakfast", "lunch", "snacks", "dinner"] as const;
