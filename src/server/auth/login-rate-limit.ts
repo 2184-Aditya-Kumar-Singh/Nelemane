@@ -74,7 +74,7 @@ export async function recordRateLimitHit(
     const record = await LoginRateLimitModel.findOneAndUpdate(
       { key },
       update,
-      { upsert: true, returnDocument: "after" },
+      { upsert: true, returnDocument: "after", updatePipeline: true },
     ).lean();
     if (!record) {
       throw new Error("Unable to update rate limit");
@@ -88,7 +88,7 @@ export async function recordRateLimitHit(
     const record = await LoginRateLimitModel.findOneAndUpdate(
       { key },
       update,
-      { returnDocument: "after" },
+      { returnDocument: "after", updatePipeline: true },
     ).lean();
     if (!record) {
       throw new Error("Unable to update rate limit");
