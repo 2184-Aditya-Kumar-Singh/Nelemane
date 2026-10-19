@@ -8,7 +8,7 @@ import { hasSameOrigin } from "@/server/auth/request-origin";
 import { connectToDatabase } from "@/server/db/connection";
 import { getEnv } from "@/lib/env";
 import { AuditLogModel } from "@/server/db/models/audit-log";
-import { PgModel, type PgAsset } from "@/server/db/models/pg";
+import { PgModel, type PgAsset, type PgQrAccount } from "@/server/db/models/pg";
 import { TemporaryAssetModel } from "@/server/db/models/temporary-asset";
 import { getEmailProvider } from "@/server/providers/email";
 import { getStorageProvider } from "@/server/providers/storage";
@@ -23,12 +23,19 @@ export async function GET() {
     await connectToDatabase();
     const pg = await PgModel.findOne({ _id: pgId, status: "ACTIVE" }).lean();
     if (!pg) return Response.json({ error: { message: "Your PG account is not available" } }, { status: 404 });
-    const qrImage = pg.paymentDetails.qrImage
-      ? {
-          publicId: pg.paymentDetails.qrImage.publicId,
-          previewUrl: await getStorageProvider().getSignedUrl(pg.paymentDetails.qrImage.publicId, 60).catch(() => ""),
-        }
-      : null;
+    const storedQrAccounts: PgQrAccount[] = pg.paymentDetails.qrAccounts?.length
+      ? pg.paymentDetails.qrAccounts
+      : pg.paymentDetails.qrImage
+        ? [{ accountHolderName: pg.owner.name, upiId: pg.paymentDetails.upiId ?? "", qrImage: pg.paymentDetails.qrImage }]
+        : [];
+    const qrAccounts = storedQrAccounts.map((account, index) => ({
+      accountHolderName: account.accountHolderName,
+      upiId: account.upiId,
+      qrImage: {
+        publicId: account.qrImage.publicId,
+        previewUrl: `/api/owner/pg/payment-details/qr/${index}`,
+      },
+    }));
     const bank = pg.paymentDetails.bank
       ? {
           accountHolderName: pg.paymentDetails.bank.accountHolderName ?? "",
@@ -42,7 +49,8 @@ export async function GET() {
       paymentDetails: {
         accountType: pg.paymentDetails.accountType,
         upiId: pg.paymentDetails.upiId ?? "",
-        qrImage,
+        qrImage: pg.paymentDetails.qrImage ? { publicId: pg.paymentDetails.qrImage.publicId } : null,
+        qrAccounts,
         bank,
         instructions: pg.paymentDetails.instructions ?? "",
       },
@@ -74,43 +82,49 @@ export async function PATCH(request: Request) {
     const eventId = randomUUID();
     let pgName = "";
     let changedFields: string[] = [];
-    let removedQrId = "";
+    let removedQrIds: string[] = [];
     try {
       await session.withTransaction(async () => {
         const pg = await PgModel.findOne({ _id: pgId, status: "ACTIVE" }).session(session);
         if (!pg) throw new Error("PG_NOT_AVAILABLE");
         pgName = pg.name;
-        const currentQr = pg.paymentDetails.qrImage;
-        let nextQr: PgAsset | undefined = currentQr;
-        let newlyUploadedId = "";
-        if (parsed.data.qrImage !== undefined) {
-          if (parsed.data.qrImage === null) {
-            nextQr = undefined;
+        const currentQrAccounts: PgQrAccount[] = pg.paymentDetails.qrAccounts?.length
+          ? pg.paymentDetails.qrAccounts
+          : pg.paymentDetails.qrImage
+            ? [{ accountHolderName: pg.owner.name, upiId: pg.paymentDetails.upiId ?? "", qrImage: pg.paymentDetails.qrImage }]
+            : [];
+        const currentQrByPublicId = new Map(currentQrAccounts.map((account) => [account.qrImage.publicId, account.qrImage]));
+        const nextQrAccounts: PgQrAccount[] = [];
+        const newlyUploadedIds: string[] = [];
+        const seenPublicIds = new Set<string>();
+        for (const account of parsed.data.qrAccounts) {
+          const reference = account.qrImage as PhotoReference;
+          let nextImage: PgAsset;
+          if (reference.assetId) {
+            const upload = await TemporaryAssetModel.findOne({
+              _id: reference.assetId,
+              ownerUserId: user.id,
+              pgId,
+              purpose: "OWNER_PAYMENT_QR",
+              visibility: "private",
+              claimedAt: { $exists: false },
+              expiresAt: { $gt: new Date() },
+            }).session(session).lean();
+            if (!upload) throw new Error("UPLOAD_NOT_AVAILABLE");
+            nextImage = { publicId: upload.publicId, url: upload.url };
+            newlyUploadedIds.push(upload._id.toString());
+          } else if (reference.publicId && currentQrByPublicId.has(reference.publicId)) {
+            nextImage = currentQrByPublicId.get(reference.publicId)!;
           } else {
-            const reference = parsed.data.qrImage as PhotoReference;
-            if (reference.assetId) {
-              const upload = await TemporaryAssetModel.findOne({
-                _id: reference.assetId,
-                ownerUserId: user.id,
-                pgId,
-                purpose: "OWNER_PAYMENT_QR",
-                visibility: "private",
-                claimedAt: { $exists: false },
-                expiresAt: { $gt: new Date() },
-              }).session(session).lean();
-              if (!upload) throw new Error("UPLOAD_NOT_AVAILABLE");
-              nextQr = { publicId: upload.publicId, url: upload.url };
-              newlyUploadedId = upload._id.toString();
-            } else if (reference.publicId && currentQr?.publicId === reference.publicId) {
-              nextQr = currentQr;
-            } else {
-              throw new Error("PHOTO_NOT_AVAILABLE");
-            }
+            throw new Error("PHOTO_NOT_AVAILABLE");
           }
+          if (seenPublicIds.has(nextImage.publicId)) throw new Error("DUPLICATE_QR");
+          seenPublicIds.add(nextImage.publicId);
+          nextQrAccounts.push({ accountHolderName: account.accountHolderName, upiId: account.upiId, qrImage: nextImage });
         }
 
         const oldBank = pg.paymentDetails.bank;
-        if (parsed.data.accountType === "PERSONAL" && !nextQr) throw new Error("PERSONAL_QR_REQUIRED");
+        if (parsed.data.accountType === "PERSONAL" && !nextQrAccounts.length) throw new Error("PERSONAL_QR_REQUIRED");
         let nextBank = oldBank;
         if (parsed.data.bank === null) {
           nextBank = undefined;
@@ -123,7 +137,7 @@ export async function PATCH(request: Request) {
             branch: parsed.data.bank.branch || undefined,
           };
         }
-        if (!nextQr && !nextBank) throw new Error("PAYMENT_METHOD_REQUIRED");
+        if (!nextQrAccounts.length && !nextBank) throw new Error("PAYMENT_METHOD_REQUIRED");
 
         const oldAccountNumber = oldBank ? decryptSensitiveValue(oldBank.accountNumber) : "";
         const nextAccountNumber = parsed.data.bank?.accountNumber ?? oldAccountNumber;
@@ -138,21 +152,24 @@ export async function PATCH(request: Request) {
         );
         changedFields = [];
         if (pg.paymentDetails.accountType !== parsed.data.accountType) changedFields.push("account type");
-        if ((pg.paymentDetails.upiId ?? "") !== (parsed.data.upiId ?? "")) changedFields.push("UPI ID");
-        if ((currentQr?.publicId ?? "") !== (nextQr?.publicId ?? "")) changedFields.push("payment QR");
+        const previousQrFingerprint = JSON.stringify(currentQrAccounts.map((account) => ({ accountHolderName: account.accountHolderName, upiId: account.upiId, publicId: account.qrImage.publicId })));
+        const nextQrFingerprint = JSON.stringify(nextQrAccounts.map((account) => ({ accountHolderName: account.accountHolderName, upiId: account.upiId, publicId: account.qrImage.publicId })));
+        if (previousQrFingerprint !== nextQrFingerprint) changedFields.push("QR payment accounts");
         if (bankChanged) changedFields.push("bank details");
         if ((pg.paymentDetails.instructions ?? "") !== (parsed.data.instructions ?? "")) changedFields.push("payment instructions");
 
-        if (currentQr && currentQr.publicId !== nextQr?.publicId) removedQrId = currentQr.publicId;
+        const nextQrIds = new Set(nextQrAccounts.map((account) => account.qrImage.publicId));
+        removedQrIds = [...new Set(currentQrAccounts.map((account) => account.qrImage.publicId).filter((publicId) => !nextQrIds.has(publicId)))];
         pg.paymentDetails = {
           accountType: parsed.data.accountType,
-          upiId: parsed.data.upiId || undefined,
-          qrImage: nextQr,
+          upiId: nextQrAccounts[0]?.upiId,
+          qrImage: nextQrAccounts[0]?.qrImage,
+          qrAccounts: nextQrAccounts,
           bank: nextBank,
           instructions: parsed.data.instructions || undefined,
         };
         await pg.save({ session });
-        if (newlyUploadedId) {
+        for (const newlyUploadedId of newlyUploadedIds) {
           const claimed = await TemporaryAssetModel.updateOne(
             { _id: newlyUploadedId, ownerUserId: user.id, pgId, claimedAt: { $exists: false } },
             { $set: { claimedAt: new Date() } },
@@ -193,7 +210,7 @@ export async function PATCH(request: Request) {
     }
 
     let imageCleanup = "COMPLETE";
-    if (removedQrId) {
+    for (const removedQrId of removedQrIds) {
       try {
         await getStorageProvider().delete(removedQrId);
         await TemporaryAssetModel.deleteOne({ pgId, publicId: removedQrId });
@@ -208,6 +225,7 @@ export async function PATCH(request: Request) {
     if (error instanceof Error && error.message === "PG_NOT_AVAILABLE") return Response.json({ error: { message: "Your PG account is not available" } }, { status: 404 });
     if (error instanceof Error && error.message === "UPLOAD_NOT_AVAILABLE") return Response.json({ error: { message: "The uploaded QR expired or is unavailable; upload it again" } }, { status: 400 });
     if (error instanceof Error && error.message === "PHOTO_NOT_AVAILABLE") return Response.json({ error: { message: "The selected QR image is invalid" } }, { status: 400 });
+    if (error instanceof Error && error.message === "DUPLICATE_QR") return Response.json({ error: { message: "Use a different image for each QR account" } }, { status: 400 });
     if (error instanceof Error && error.message === "PERSONAL_QR_REQUIRED") return Response.json({ error: { message: "Personal accounts require a QR image" } }, { status: 400 });
     if (error instanceof Error && error.message === "PAYMENT_METHOD_REQUIRED") return Response.json({ error: { message: "Add a QR image or bank details" } }, { status: 400 });
     return Response.json({ error: { message: "Payment details could not be saved" } }, { status: 500 });

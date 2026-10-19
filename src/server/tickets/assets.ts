@@ -4,7 +4,6 @@ import type mongoose from "mongoose";
 
 import { TemporaryAssetModel, type UploadPurpose } from "@/server/db/models/temporary-asset";
 import type { TicketImage } from "@/server/db/models/ticket";
-import { getStorageProvider } from "@/server/providers/storage";
 
 export async function claimTicketImages(input: {
   assetIds: string[];
@@ -28,8 +27,4 @@ export async function claimTicketImages(input: {
   }, { $set: { claimedAt: new Date() } }, { session: input.session });
   if (result.modifiedCount !== ids.length) throw new Error("UPLOAD_NOT_AVAILABLE");
   return assets.map((asset) => ({ publicId: asset.publicId, resourceType: "image" as const }));
-}
-
-export async function signTicketImages(images: TicketImage[]): Promise<string[]> {
-  return Promise.all(images.map((image) => getStorageProvider().getSignedUrl(image.publicId, 60)));
 }

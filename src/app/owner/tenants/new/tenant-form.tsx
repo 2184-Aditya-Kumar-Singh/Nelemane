@@ -7,7 +7,7 @@ import { PhotoUpload, type OwnerPhotoValue } from "@/app/owner/_components/photo
 
 type RoomOption = { id: string; roomNumber: string; floor: string; block: string; capacity: number; freeBeds: number; roomType: { id: string; name: string; sharing: number; rentPaise: number; depositPaise: number } | null };
 type TenantForm = { name: string; phone: string; email: string; roomId: string; monthlyRentPaise: number; depositPaise: number; joinedAt: string; fatherName: string; motherName: string; parentPhone: string; alternatePhone: string; profilePhoto: OwnerPhotoValue | null; aadhaarPhoto: OwnerPhotoValue | null; aadhaarConsent: boolean; sendCredentialsNow: boolean };
-type ApiError = { error?: { message?: string } };
+type ApiError = { error?: { message?: string; fields?: Array<{ path: string; message: string }> } };
 const empty: TenantForm = { name: "", phone: "", email: "", roomId: "", monthlyRentPaise: 0, depositPaise: 0, joinedAt: "", fatherName: "", motherName: "", parentPhone: "", alternatePhone: "", profilePhoto: null, aadhaarPhoto: null, aadhaarConsent: false, sendCredentialsNow: true };
 const moneyValue = (paise: number) => String(paise / 100);
 
@@ -49,7 +49,10 @@ export function AddTenantForm() {
         }),
       });
       const result = await response.json() as { tenant?: { name: string }; credentialsDelivery?: string; smsDelivery?: string } & ApiError;
-      if (!response.ok || !result.tenant) throw new Error(result.error?.message ?? "Tenant could not be added");
+      if (!response.ok || !result.tenant) {
+        const fieldErrors = result.error?.fields?.map((field) => `${field.path}: ${field.message}`).join(" · ");
+        throw new Error(fieldErrors || result.error?.message || "Tenant could not be added");
+      }
       const credentialText = result.credentialsDelivery === "SENT" ? "Login credentials emailed." : result.credentialsDelivery === "FAILED" ? "Tenant created, but the credential email failed; ask the resident to use Forgot password." : result.credentialsDelivery === "SKIPPED" ? "Tenant created; email delivery is not configured. Ask the resident to use Forgot password." : "Tenant created. Credentials were not sent; the resident can use Forgot password.";
       const smsText = result.smsDelivery === "SENT" ? " SMS credentials were sent." : result.smsDelivery === "FAILED" ? " SMS delivery failed." : result.smsDelivery === "SKIPPED" ? " SMS is not configured." : "";
       setMessage(`${result.tenant.name} was added. ${credentialText}${smsText}`);
@@ -64,10 +67,16 @@ export function AddTenantForm() {
   }
 
   if (loading) return <p role="status" className="rounded-2xl border bg-white p-6 text-sm text-foreground/60">Loading available rooms…</p>;
-  if (!rooms.some((room) => room.freeBeds > 0)) return <section className="rounded-2xl border bg-white p-6">{error ? <p role="alert" className="text-sm text-red-700">{error}</p> : <p className="text-sm text-foreground/65">There are no free beds right now. Add a room or vacate a tenant before onboarding another resident.</p>}<Link href="/owner/rooms" className="bg-primary text-primary-foreground mt-4 inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold">Manage rooms</Link></section>;
+  if (!rooms.some((room) => room.freeBeds > 0)) return <section className="rounded-2xl border bg-white p-6">
+    {message && <p role="status" className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-900">{message}</p>}
+    {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
+    {!message && !error && <p className="text-sm text-foreground/65">There are no free beds right now. Add a room or vacate a tenant before onboarding another resident.</p>}
+    {message && <p className="mt-4 text-sm text-foreground/65">There are no free beds left. Add a room or vacate a tenant before onboarding another resident.</p>}
+    <Link href="/owner/rooms" className="bg-primary text-primary-foreground mt-4 inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold">Manage rooms</Link>
+  </section>;
 
   return (
-    <form onSubmit={(event) => { void submit(event); }} className="grid gap-6">
+    <form onSubmit={(event) => { void submit(event); }} onInvalidCapture={() => { setMessage(""); setError("Please complete the required fields before adding this tenant."); }} className="grid gap-6">
       {message && <p role="status" className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm font-semibold text-green-900">{message}</p>}
       {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-800">{error}</p>}
       <section className="grid gap-5 rounded-2xl border bg-white p-5 sm:p-7">
@@ -93,7 +102,7 @@ export function AddTenantForm() {
       </section>
 
       <section className="flex flex-col gap-4 rounded-2xl border bg-white p-5 sm:flex-row sm:items-center sm:justify-between sm:p-7"><div><h2 className="font-display text-primary text-xl">Account credentials</h2><p className="mt-1 text-sm text-foreground/55">A secure temporary password is generated. The resident must change it after signing in.</p></div><label className="flex min-h-11 items-center gap-3 rounded-xl border px-4 text-sm font-semibold"><input type="checkbox" checked={form.sendCredentialsNow} onChange={(e) => setForm((v) => ({ ...v, sendCredentialsNow: e.target.checked }))} className="size-4 accent-primary" />Email credentials now</label></section>
-      <div className="flex flex-wrap gap-3"><button disabled={saving} className="bg-primary text-primary-foreground min-h-12 rounded-xl px-6 text-sm font-semibold disabled:opacity-50">{saving ? "Adding tenant…" : "Add tenant"}</button><Link href="/owner/tenants" className="inline-flex min-h-12 items-center rounded-xl border px-5 text-sm font-semibold">Cancel</Link></div>
+      <div className="flex flex-wrap gap-3"><button type="submit" disabled={saving} className="bg-primary text-primary-foreground min-h-12 rounded-xl px-6 text-sm font-semibold disabled:opacity-50">{saving ? "Adding tenant…" : "Add tenant"}</button><Link href="/owner/tenants" className="inline-flex min-h-12 items-center rounded-xl border px-5 text-sm font-semibold">Cancel</Link></div>
     </form>
   );
 }

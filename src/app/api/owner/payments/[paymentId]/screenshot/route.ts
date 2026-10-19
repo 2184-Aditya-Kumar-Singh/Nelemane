@@ -4,7 +4,7 @@ import { authorizationErrorResponse, requirePgScope, requireRoles } from "@/serv
 import { connectToDatabase } from "@/server/db/connection";
 import { AuditLogModel } from "@/server/db/models/audit-log";
 import { PaymentModel } from "@/server/db/models/payment";
-import { getStorageProvider } from "@/server/providers/storage";
+import { privateImageResponse } from "@/server/providers/private-image-response";
 
 export const runtime = "nodejs";
 
@@ -17,9 +17,11 @@ export async function GET(_request: Request, context: { params: Promise<{ paymen
     await connectToDatabase();
     const payment = await PaymentModel.findOne({ _id: paymentId, pgId, source: "TENANT" }).select("screenshot tenantId month").lean();
     if (!payment?.screenshot) return Response.json({ error: { message: "Payment proof was not found" } }, { status: 404 });
-    const signedUrl = await getStorageProvider().getSignedUrl(payment.screenshot.publicId, 60);
-    await AuditLogModel.create({ actorId: new Types.ObjectId(user.id), action: "PAYMENT_PROOF_VIEWED", entity: "Payment", entityId: payment._id, meta: { pgId, tenantId: payment.tenantId.toString(), month: payment.month } });
-    return Response.json({ signedUrl, expiresInSeconds: 60 });
+    // Private Cloudinary links are intentionally limited to 60 seconds by the provider.
+    const imageResponse = await privateImageResponse(payment.screenshot.publicId);
+    if (!imageResponse.ok) return imageResponse;
+    await AuditLogModel.create({ actorId: new Types.ObjectId(user.id), action: "PAYMENT_PROOF_VIEWED", entity: "Payment", entityId: payment._id, meta: { pgId, tenantId: payment.tenantId.toString(), month: payment.month } }).catch(() => undefined);
+    return imageResponse;
   } catch (error) {
     const response = authorizationErrorResponse(error);
     if (response) return response;

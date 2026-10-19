@@ -55,8 +55,11 @@ export const ownerPgDetailsSchema = z.object({
 
 export const ownerPaymentDetailsSchema = z.object({
   accountType: z.enum(["BUSINESS", "PERSONAL"]),
-  upiId: z.string().trim().max(100).regex(/^[\w.-]{2,256}@[a-zA-Z0-9.-]{2,64}$/, "Enter a valid UPI ID").optional().or(z.literal("")),
-  qrImage: ownerPhotoReferenceSchema.nullable().optional(),
+  qrAccounts: z.array(z.object({
+    accountHolderName: z.string().trim().min(2).max(120),
+    upiId: z.string().trim().max(100).regex(/^[\w.-]{2,64}@[a-zA-Z0-9.-]{2,64}$/, "Enter a valid UPI ID"),
+    qrImage: ownerPhotoReferenceSchema,
+  })).max(5),
   bank: z.object({
     accountHolderName: z.string().trim().min(2).max(120),
     bankName: z.string().trim().min(2).max(120),
@@ -66,11 +69,11 @@ export const ownerPaymentDetailsSchema = z.object({
   }).nullable().optional(),
   instructions: z.string().trim().max(1000).optional().or(z.literal("")),
 }).superRefine((details, context) => {
-  if (!details.qrImage && !details.bank) {
-    context.addIssue({ code: "custom", path: ["qrImage"], message: "Add a QR image or bank details" });
+  if (!details.qrAccounts.length && !details.bank) {
+    context.addIssue({ code: "custom", path: ["qrAccounts"], message: "Add a QR account or bank details" });
   }
-  if (details.accountType === "PERSONAL" && !details.qrImage) {
-    context.addIssue({ code: "custom", path: ["qrImage"], message: "Personal accounts require a QR image" });
+  if (details.accountType === "PERSONAL" && !details.qrAccounts.length) {
+    context.addIssue({ code: "custom", path: ["qrAccounts"], message: "Personal accounts require a QR image" });
   }
 });
 

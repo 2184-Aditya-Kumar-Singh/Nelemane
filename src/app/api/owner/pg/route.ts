@@ -61,7 +61,7 @@ export async function GET() {
     if (!pg.photos.length) missing.push("Gallery photos");
     if (!pg.houseRules.trim()) missing.push("House rules");
     if (!roomTypes) missing.push("Room types");
-    if (!pg.paymentDetails.qrImage && !pg.paymentDetails.bank) missing.push("Payment details");
+    if (!pg.paymentDetails.qrImage && !pg.paymentDetails.qrAccounts?.length && !pg.paymentDetails.bank) missing.push("Payment details");
     const total = 7;
     const complete = total - missing.length;
 

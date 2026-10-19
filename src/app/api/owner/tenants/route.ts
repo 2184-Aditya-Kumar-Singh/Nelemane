@@ -35,9 +35,7 @@ export async function GET() {
       const room = tenant.roomId as unknown as { _id?: Types.ObjectId; roomNumber?: string; floor?: string; block?: string; roomTypeId?: Types.ObjectId | { _id?: Types.ObjectId; name?: string; sharing?: number } } | null;
       const populatedType = room?.roomTypeId && typeof room.roomTypeId === "object" && "name" in room.roomTypeId ? room.roomTypeId : null;
       const roomType = populatedType?.name ? { name: populatedType.name, sharing: populatedType.sharing ?? 1 } : null;
-      const photoUrl = tenant.profilePhoto
-        ? await getStorageProvider().getSignedUrl(tenant.profilePhoto.publicId, 60).catch(() => "")
-        : "";
+      const photoUrl = tenant.profilePhoto ? `/api/owner/tenants/${tenant._id.toString()}/photo` : "";
       return {
         id: tenant._id.toString(), userId: tenant.userId.toString(), name: tenant.name,
         email: tenant.email, phone: tenant.phone, status: tenant.status,

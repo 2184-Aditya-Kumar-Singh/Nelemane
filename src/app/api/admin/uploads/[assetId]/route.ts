@@ -3,7 +3,6 @@ import { Types } from "mongoose";
 import { authorizationErrorResponse, requireRoles } from "@/server/auth/authorization";
 import { connectToDatabase } from "@/server/db/connection";
 import { TemporaryAssetModel } from "@/server/db/models/temporary-asset";
-import { getStorageProvider } from "@/server/providers/storage";
 
 export async function GET(
   _request: Request,
@@ -24,7 +23,7 @@ export async function GET(
     if (!asset) return Response.json({ error: { message: "Image was not found" } }, { status: 404 });
 
     const url = asset.visibility === "private"
-      ? await getStorageProvider().getSignedUrl(asset.publicId, 60)
+      ? `/api/admin/uploads/${asset._id.toString()}/image`
       : asset.url;
     return Response.json({ asset: { id: asset._id.toString(), purpose: asset.purpose, previewUrl: url } });
   } catch (error) {

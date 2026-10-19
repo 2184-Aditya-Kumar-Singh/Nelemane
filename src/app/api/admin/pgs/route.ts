@@ -104,12 +104,12 @@ export async function POST(request: Request) {
         committedSlug = `${input.pg.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70) || "pg"}-${randomBytes(3).toString("hex")}`;
         credential = randomBytes(18).toString("base64url");
 
-        const uploadRequirements: Array<{ id: string | undefined; purpose: UploadPurpose }> = [
-          { id: input.owner.profileAssetId, purpose: "OWNER_PROFILE" },
-          { id: input.pg.profileAssetId, purpose: "PG_PROFILE" },
-          { id: input.payment.qrAssetId, purpose: "PAYMENT_QR" },
+        const uploadRequirements: Array<{ key: string; id: string | undefined; purpose: UploadPurpose }> = [
+          { key: "owner-profile", id: input.owner.profileAssetId, purpose: "OWNER_PROFILE" },
+          { key: "pg-profile", id: input.pg.profileAssetId, purpose: "PG_PROFILE" },
+          ...input.payment.qrAccounts.map((account, index) => ({ key: `payment-qr-${index}`, id: account.qrAssetId, purpose: "PAYMENT_QR" as const })),
         ];
-        const assets = new Map<UploadPurpose, { id: string; url: string; publicId: string }>();
+        const assets = new Map<string, { id: string; url: string; publicId: string }>();
         for (const upload of uploadRequirements) {
           if (!upload.id) continue;
           const asset = await TemporaryAssetModel.findOne({
@@ -120,16 +120,25 @@ export async function POST(request: Request) {
             expiresAt: { $gt: new Date() },
           }).session(session).lean();
           if (!asset) throw new Error("UPLOAD_NOT_AVAILABLE");
-          assets.set(upload.purpose, {
+          assets.set(upload.key, {
             id: asset._id.toString(),
             url: asset.url,
             publicId: asset.publicId,
           });
         }
 
-        const ownerAsset = assets.get("OWNER_PROFILE");
-        const pgAsset = assets.get("PG_PROFILE");
-        const qrAsset = assets.get("PAYMENT_QR");
+        const ownerAsset = assets.get("owner-profile");
+        const pgAsset = assets.get("pg-profile");
+        const qrAccounts = input.payment.qrAccounts.map((account, index) => {
+          const asset = assets.get(`payment-qr-${index}`);
+          if (!asset) throw new Error("UPLOAD_NOT_AVAILABLE");
+          return {
+            accountHolderName: account.accountHolderName,
+            upiId: account.upiId,
+            qrImage: { url: asset.url, publicId: asset.publicId },
+          };
+        });
+        const primaryQr = qrAccounts[0];
         const bank = input.payment.bank
           ? {
               accountHolderName: input.payment.bank.accountHolderName,
@@ -173,8 +182,9 @@ export async function POST(request: Request) {
           profilePhoto: pgAsset ? safeAsset({ ...pgAsset, purpose: "PG_PROFILE" }) : undefined,
           paymentDetails: {
             accountType: input.payment.accountType,
-            upiId: input.payment.upiId || undefined,
-            qrImage: qrAsset ? safeAsset({ ...qrAsset, purpose: "PAYMENT_QR" }) : undefined,
+            upiId: primaryQr?.upiId,
+            qrImage: primaryQr?.qrImage,
+            qrAccounts,
             bank,
             instructions: input.payment.instructions,
           },

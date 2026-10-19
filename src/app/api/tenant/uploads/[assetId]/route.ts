@@ -3,7 +3,6 @@ import { Types } from "mongoose";
 import { authorizationErrorResponse } from "@/server/auth/authorization";
 import { requireActiveTenant } from "@/server/auth/tenant-scope";
 import { TemporaryAssetModel, type UploadPurpose } from "@/server/db/models/temporary-asset";
-import { getStorageProvider } from "@/server/providers/storage";
 
 export async function GET(_request: Request, context: { params: Promise<{ assetId: string }> }) {
   try {
@@ -17,7 +16,7 @@ export async function GET(_request: Request, context: { params: Promise<{ assetI
       claimedAt: { $exists: false }, expiresAt: { $gt: new Date() },
     }).lean();
     if (!asset) return Response.json({ error: { message: "Screenshot was not found" } }, { status: 404 });
-    return Response.json({ previewUrl: await getStorageProvider().getSignedUrl(asset.publicId, 60), expiresInSeconds: 60 });
+    return Response.json({ previewUrl: `/api/tenant/uploads/${asset._id.toString()}/image?purpose=${purpose}` });
   } catch (error) {
     const response = authorizationErrorResponse(error);
     if (response) return response;

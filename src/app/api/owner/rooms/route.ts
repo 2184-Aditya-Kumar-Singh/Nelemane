@@ -8,7 +8,6 @@ import { AuditLogModel } from "@/server/db/models/audit-log";
 import { RoomModel } from "@/server/db/models/room";
 import { RoomTypeModel } from "@/server/db/models/room-type";
 import { TenantModel } from "@/server/db/models/tenant";
-import { getStorageProvider } from "@/server/providers/storage";
 
 function isDuplicateKeyError(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
@@ -25,7 +24,7 @@ export async function GET() {
     for (const tenant of tenantRecords) {
       const roomId = tenant.roomId.toString();
       const occupants = occupantsByRoom.get(roomId) ?? [];
-      const photoUrl = tenant.profilePhoto ? await getStorageProvider().getSignedUrl(tenant.profilePhoto.publicId, 60).catch(() => "") : "";
+      const photoUrl = tenant.profilePhoto ? `/api/owner/tenants/${tenant._id.toString()}/photo` : "";
       occupants.push({ name: tenant.name, photoUrl });
       occupantsByRoom.set(roomId, occupants);
     }

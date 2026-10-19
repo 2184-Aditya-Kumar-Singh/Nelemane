@@ -21,7 +21,7 @@ export async function GET() {
       ReviewModel.findOne({ pgId, tenantId: tenant._id }).lean(),
       PgModel.findOne({ _id: pgId }).select("name").lean(),
     ]);
-    const profilePhotoUrl = tenant.profilePhoto ? await getStorageProvider().getSignedUrl(tenant.profilePhoto.publicId, 60) : "";
+    const profilePhotoUrl = tenant.profilePhoto ? "/api/tenant/profile/photo" : "";
     return Response.json({ profile: { name: tenant.name, phone: tenant.phone, email: tenant.email, profilePhotoUrl, pgName: pg?.name ?? "" }, review: review ? { rating: review.rating, comment: review.comment ?? "" } : null });
   } catch (error) {
     const response = authorizationErrorResponse(error);

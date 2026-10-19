@@ -15,8 +15,8 @@ export const ticketCreateSchema = z.object({
 export const ticketProgressSchema = z.object({ action: z.literal("IN_PROGRESS") });
 export const ticketResolutionSchema = z.object({
   action: z.literal("RESOLVE"),
-  note: z.string().trim().min(5).max(2000),
-  imageAssetIds: z.array(objectId).min(1).max(5),
+  note: z.string().trim().min(5, "Resolution note must be at least 5 characters").max(2000),
+  imageAssetIds: z.array(objectId).min(1, "Attach at least one proof photo").max(5),
 });
 
 export const ticketFeedbackSchema = z.object({
@@ -27,12 +27,6 @@ export const ticketFeedbackSchema = z.object({
   if (!value.approved && !value.comment?.trim()) {
     context.addIssue({ code: "custom", path: ["comment"], message: "Explain what still needs fixing" });
   }
-});
-
-const mealSchema = z.object({ items: z.array(z.string().trim().min(1).max(80)).max(12), isVeg: z.boolean() });
-const daySchema = z.object({ breakfast: mealSchema, lunch: mealSchema, snacks: mealSchema, dinner: mealSchema });
-export const weeklyMenuSchema = z.object({
-  week: z.object({ mon: daySchema, tue: daySchema, wed: daySchema, thu: daySchema, fri: daySchema, sat: daySchema, sun: daySchema }),
 });
 
 export const tenantProfileSchema = z.object({

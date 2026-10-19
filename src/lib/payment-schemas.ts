@@ -11,6 +11,7 @@ export const tenantPaymentInputSchema = z.object({
   transactionDate: date,
   amountPaise: z.number().int().min(1).max(1_000_000_000),
   payerName: z.string().trim().min(2).max(120),
+  recipientAccountName: z.string().trim().min(2).max(120),
   mode: z.enum(["UPI", "BANK_TRANSFER", "OTHER"]),
   screenshot: ownerPhotoReferenceSchema,
   note: z.string().trim().max(1000).optional().or(z.literal("")),

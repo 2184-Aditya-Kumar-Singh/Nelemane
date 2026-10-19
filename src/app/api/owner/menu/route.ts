@@ -2,9 +2,10 @@ import { authorizationErrorResponse, requirePgScope, requireRoles } from "@/serv
 import { hasSameOrigin } from "@/server/auth/request-origin";
 import { connectToDatabase } from "@/server/db/connection";
 import { AuditLogModel } from "@/server/db/models/audit-log";
-import { MenuModel, MENU_DAYS, MENU_MEALS } from "@/server/db/models/menu";
+import { MenuModel } from "@/server/db/models/menu";
+import { normalizeMenuWeek } from "@/lib/menu-types";
 import { PgModel } from "@/server/db/models/pg";
-import { weeklyMenuSchema } from "@/lib/ticket-schemas";
+import { weeklyMenuSchema } from "@/lib/menu-schemas";
 
 export async function GET() {
   try {
@@ -12,8 +13,7 @@ export async function GET() {
     const pgId = requirePgScope(user);
     await connectToDatabase();
     const menu = await MenuModel.findOne({ pgId }).lean();
-    const emptyWeek = Object.fromEntries(MENU_DAYS.map((day) => [day, Object.fromEntries(MENU_MEALS.map((meal) => [meal, { items: [], isVeg: true }]))]));
-    return Response.json({ week: menu?.week ?? emptyWeek });
+    return Response.json({ week: normalizeMenuWeek(menu?.week) });
   } catch (error) {
     const response = authorizationErrorResponse(error);
     if (response) return response;
@@ -27,7 +27,7 @@ export async function PUT(request: Request) {
     const user = await requireRoles("PG_OWNER");
     const pgId = requirePgScope(user);
     const parsed = weeklyMenuSchema.safeParse(await request.json() as unknown);
-    if (!parsed.success) return Response.json({ error: { message: "Review the menu entries" } }, { status: 400 });
+    if (!parsed.success) return Response.json({ error: { message: "Every dish needs a name and a Veg or Non-veg choice before saving" } }, { status: 400 });
     await connectToDatabase();
     if (!await PgModel.exists({ _id: pgId, status: "ACTIVE" })) return Response.json({ error: { message: "Your PG account is not available" } }, { status: 404 });
     const menu = await MenuModel.findOneAndUpdate(

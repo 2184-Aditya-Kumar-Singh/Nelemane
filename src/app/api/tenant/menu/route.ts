@@ -1,7 +1,8 @@
 import { authorizationErrorResponse } from "@/server/auth/authorization";
 import { requireActiveTenant } from "@/server/auth/tenant-scope";
 import { connectToDatabase } from "@/server/db/connection";
-import { MenuModel, MENU_DAYS, MENU_MEALS } from "@/server/db/models/menu";
+import { MenuModel } from "@/server/db/models/menu";
+import { normalizeMenuWeek } from "@/lib/menu-types";
 import { getIstMenuDay } from "@/server/menus/dates";
 
 export async function GET() {
@@ -9,8 +10,7 @@ export async function GET() {
     const { pgId } = await requireActiveTenant();
     await connectToDatabase();
     const menu = await MenuModel.findOne({ pgId }).lean();
-    const emptyWeek = Object.fromEntries(MENU_DAYS.map((day) => [day, Object.fromEntries(MENU_MEALS.map((meal) => [meal, { items: [], isVeg: true }]))]));
-    const week = menu?.week ?? emptyWeek;
+    const week = normalizeMenuWeek(menu?.week);
     const today = getIstMenuDay();
     return Response.json({ today, todayMenu: week[today], week });
   } catch (error) {

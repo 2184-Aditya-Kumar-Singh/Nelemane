@@ -41,6 +41,11 @@ export function serializePgAdminDetail(pg: PgWithId) {
       qrImage: pg.paymentDetails.qrImage
         ? { publicId: pg.paymentDetails.qrImage.publicId }
         : null,
+      qrAccounts: (pg.paymentDetails.qrAccounts?.length
+        ? pg.paymentDetails.qrAccounts
+        : pg.paymentDetails.qrImage
+          ? [{ accountHolderName: pg.owner.name, upiId: pg.paymentDetails.upiId ?? "", qrImage: pg.paymentDetails.qrImage }]
+          : []).map((account) => ({ accountHolderName: account.accountHolderName, upiId: account.upiId, qrImage: { publicId: account.qrImage.publicId } })),
       bank: pg.paymentDetails.bank
         ? {
             accountHolderName: pg.paymentDetails.bank.accountHolderName,

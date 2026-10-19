@@ -16,6 +16,12 @@ export interface PgAsset {
   publicId: string;
 }
 
+export interface PgQrAccount {
+  accountHolderName: string;
+  upiId: string;
+  qrImage: PgAsset;
+}
+
 export interface EncryptedValue {
   ciphertext: string;
   iv: string;
@@ -52,6 +58,7 @@ export interface PgRecord {
     accountType: PgAccountType;
     upiId?: string;
     qrImage?: PgAsset;
+    qrAccounts?: PgQrAccount[];
     bank?: {
       accountHolderName: string;
       bankName: string;
@@ -102,6 +109,15 @@ const encryptedValueSchema = new Schema<EncryptedValue>(
   { _id: false },
 );
 
+const qrAccountSchema = new Schema<PgQrAccount>(
+  {
+    accountHolderName: { type: String, required: true, trim: true, maxlength: 120 },
+    upiId: { type: String, required: true, trim: true, maxlength: 100 },
+    qrImage: { type: assetSchema, required: true },
+  },
+  { _id: false },
+);
+
 const pgSchema = new Schema<PgRecord>(
   {
     name: { type: String, required: true, trim: true, maxlength: 140 },
@@ -140,6 +156,7 @@ const pgSchema = new Schema<PgRecord>(
       accountType: { type: String, enum: PG_ACCOUNT_TYPES, required: true },
       upiId: { type: String, trim: true, maxlength: 100 },
       qrImage: { type: assetSchema, default: undefined },
+      qrAccounts: { type: [qrAccountSchema], default: [] },
       bank: {
         accountHolderName: { type: String, trim: true, maxlength: 120 },
         bankName: { type: String, trim: true, maxlength: 120 },

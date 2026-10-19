@@ -11,8 +11,7 @@ import { RoomModel } from "@/server/db/models/room";
 import { TenantModel } from "@/server/db/models/tenant";
 import { TicketModel } from "@/server/db/models/ticket";
 import { emailTicketResolved } from "@/server/tickets/notifications";
-import { claimTicketImages, signTicketImages } from "@/server/tickets/assets";
-import { getStorageProvider } from "@/server/providers/storage";
+import { claimTicketImages } from "@/server/tickets/assets";
 
 export const runtime = "nodejs";
 
@@ -26,18 +25,19 @@ export async function GET(_request: Request, context: { params: Promise<{ ticket
     const ticket = await TicketModel.findOne({ _id: ticketId, pgId }).lean();
     if (!ticket) return Response.json({ error: { message: "Ticket was not found" } }, { status: 404 });
     const [tenant, room] = await Promise.all([
-      TenantModel.findOne({ _id: ticket.tenantId, pgId }).select("name email phone roomId").lean(),
-      RoomModel.findOne({ _id: ticket.roomId, pgId }).select("roomNumber floor block").lean(),
+      TenantModel.findOne({ _id: ticket.tenantId, pgId }).select("name email phone roomId").lean().catch(() => null),
+      RoomModel.findOne({ _id: ticket.roomId, pgId }).select("roomNumber floor block").lean().catch(() => null),
     ]);
-    const images = await Promise.all(ticket.images.map(async (image) => await getStorageProvider().getSignedUrl(image.publicId, 60)));
-    const proofImages = ticket.resolution?.images ? await signTicketImages(ticket.resolution.images) : [];
-    if (ticket.images.length || proofImages.length) await AuditLogModel.create({ actorId: user.id, action: "TICKET_IMAGES_VIEWED", entity: "Ticket", entityId: ticket._id, meta: { pgId, tenantId: ticket.tenantId.toString(), imageCount: images.length + proofImages.length } });
+    const ticketImages = ticket.images ?? [];
+    const images = ticketImages.map((_, index) => `/api/owner/tickets/${ticket._id.toString()}/image?group=ticket&index=${index}`);
+    const proofAssets = ticket.resolution?.images ?? [];
+    const proofImages = proofAssets.map((_, index) => `/api/owner/tickets/${ticket._id.toString()}/image?group=resolution&index=${index}`);
     return Response.json({ ticket: {
       id: ticket._id.toString(), title: ticket.title, description: ticket.description, category: ticket.category, priority: ticket.priority,
       status: ticket.status, createdAt: ticket.createdAt.toISOString(), updatedAt: ticket.updatedAt.toISOString(),
       images, resolution: ticket.resolution ? { note: ticket.resolution.note, resolvedAt: ticket.resolution.resolvedAt.toISOString(), images: proofImages } : null,
       feedback: ticket.tenantFeedback ? { approved: ticket.tenantFeedback.approved, comment: ticket.tenantFeedback.comment ?? "", at: ticket.tenantFeedback.at.toISOString() } : null,
-      timeline: ticket.timeline.map((entry) => ({ at: entry.at.toISOString(), action: entry.action, note: entry.note ?? "" })),
+      timeline: (ticket.timeline ?? []).map((entry) => ({ at: entry.at.toISOString(), action: entry.action, note: entry.note ?? "" })),
       tenant: tenant ? { name: tenant.name, email: tenant.email, phone: tenant.phone, room: room?.roomNumber ?? "—" } : null,
     } });
   } catch (error) {
@@ -58,6 +58,12 @@ export async function PATCH(request: Request, context: { params: Promise<{ ticke
     const action = typeof body === "object" && body !== null && "action" in body ? body.action : null;
     const progress = action === "IN_PROGRESS" ? ticketProgressSchema.safeParse(body) : null;
     const resolution = action === "RESOLVE" ? ticketResolutionSchema.safeParse(body) : null;
+    if (resolution && !resolution.success) {
+      return Response.json({ error: { message: resolution.error.issues[0]?.message ?? "Add a resolution note and proof photo" } }, { status: 400 });
+    }
+    if (progress && !progress.success) {
+      return Response.json({ error: { message: progress.error.issues[0]?.message ?? "Choose a valid ticket action" } }, { status: 400 });
+    }
     if (!progress?.success && !resolution?.success) return Response.json({ error: { message: "Choose a valid ticket action and provide the required details" } }, { status: 400 });
     await connectToDatabase();
     const session = await mongoose.startSession();

@@ -20,6 +20,9 @@ export interface PaymentRecord {
   transactionDate: Date;
   amountSubmitted: number;
   payerName: string;
+  recipientAccountName?: string;
+  /** Legacy tenant source-account field; do not use as the payment recipient name. */
+  senderAccountName?: string;
   note?: string;
   screenshot?: { publicId: string; resourceType: "image" | "raw" };
   status: PaymentStatus;
@@ -47,6 +50,9 @@ const paymentSchema = new Schema<PaymentRecord>({
   transactionDate: { type: Date, required: true },
   amountSubmitted: { type: Number, required: true, min: 1 },
   payerName: { type: String, required: true, trim: true, maxlength: 120 },
+  recipientAccountName: { type: String, trim: true, maxlength: 120 },
+  // Retained only so existing documents with this legacy field remain readable.
+  senderAccountName: { type: String, trim: true, maxlength: 120 },
   note: { type: String, trim: true, maxlength: 1000 },
   screenshot: { type: screenshotSchema, default: undefined },
   status: { type: String, enum: PAYMENT_STATUSES, required: true, default: "PENDING" },

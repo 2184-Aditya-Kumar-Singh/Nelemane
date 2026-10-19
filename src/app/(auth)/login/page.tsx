@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { CredentialsSignin } from "next-auth";
 import { signIn } from "@/auth";
 import { APP_NAME } from "@/config/app";
 
@@ -21,11 +23,19 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       ? requested
       : "/dashboard";
 
-    await signIn("credentials", {
-      email: formData.get("email"),
-      password: formData.get("password"),
-      redirectTo,
-    });
+    try {
+      await signIn("credentials", {
+        email: formData.get("email"),
+        password: formData.get("password"),
+        redirectTo,
+      });
+    } catch (error) {
+      if (error instanceof CredentialsSignin) {
+        redirect("/login?error=CredentialsSignin");
+      }
+
+      throw error;
+    }
   }
 
   return (
@@ -50,7 +60,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           role="alert"
           className="mt-5 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300"
         >
-          Email or password is incorrect, or the account is temporarily locked.
+          Email or password is incorrect, or sign-in attempts are temporarily locked. Check the owner credentials email or use Forgot password.
         </p>
       ) : null}
 

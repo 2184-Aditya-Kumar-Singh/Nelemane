@@ -8,6 +8,7 @@ import { hashPassword } from "@/server/auth/password";
 import { encryptSensitiveValue } from "@/server/security/encryption";
 import { connectToDatabase } from "@/server/db/connection";
 import { MenuModel, MENU_DAYS, type MenuDay, type MenuRecord } from "@/server/db/models/menu";
+import type { MenuFoodType } from "@/lib/menu-types";
 import { PaymentModel } from "@/server/db/models/payment";
 import { PgModel, type PgAsset, type PgGender, type PgRecord } from "@/server/db/models/pg";
 import { RentChargeModel } from "@/server/db/models/rent-charge";
@@ -453,19 +454,20 @@ async function seedDemoPg(config: DemoPg, passwordHash: string, now: Date): Prom
     }
   }
 
+  const dish = (name: string, foodType: MenuFoodType, description = "") => ({ name, foodType, description });
   const mondayMenu: MenuRecord["week"][MenuDay] = {
-    breakfast: { items: ["Idli", "Coconut chutney", "Filter coffee"], isVeg: true },
-    lunch: { items: ["Rice", "Sambar", "Poriyal", "Curd"], isVeg: true },
-    snacks: { items: ["Masala chai", "Banana"], isVeg: true },
-    dinner: { items: ["Chapati", "Paneer curry", "Salad"], isVeg: true },
+    breakfast: { items: [dish("Idli", "VEG", "Steamed rice and lentil cakes"), dish("Coconut chutney", "VEG"), dish("Filter coffee", "VEG")] },
+    lunch: { items: [dish("Rice", "VEG"), dish("Sambar", "VEG", "Lentil and vegetable stew"), dish("Poriyal", "VEG", "South Indian stir-fried vegetables"), dish("Curd", "VEG")] },
+    snacks: { items: [dish("Masala chai", "VEG", "Spiced milk tea"), dish("Banana", "VEG")] },
+    dinner: { items: [dish("Chapati", "VEG"), dish("Paneer curry", "VEG", "Curry made with Indian cottage cheese"), dish("Salad", "VEG")] },
   };
   const week = Object.fromEntries(MENU_DAYS.map((day, index) => [
     day,
     {
-      breakfast: { ...mondayMenu.breakfast, items: index === 0 ? mondayMenu.breakfast.items : ["Dosa", "Sambar", "Filter coffee"] },
-      lunch: { ...mondayMenu.lunch, items: index === 0 ? mondayMenu.lunch.items : ["Rice", "Dal", "Seasonal vegetables", "Curd"] },
-      snacks: { ...mondayMenu.snacks, items: index === 0 ? mondayMenu.snacks.items : ["Masala chai", "Fruit"] },
-      dinner: { ...mondayMenu.dinner, items: index === 0 ? mondayMenu.dinner.items : ["Chapati", "Mixed vegetable curry", "Salad"] },
+      breakfast: { ...mondayMenu.breakfast, items: index === 0 ? mondayMenu.breakfast.items : [dish("Dosa", "VEG", "Crisp fermented rice and lentil crepe"), dish("Sambar", "VEG", "Lentil and vegetable stew"), dish("Filter coffee", "VEG")] },
+      lunch: { ...mondayMenu.lunch, items: index === 0 ? mondayMenu.lunch.items : [dish("Rice", "VEG"), dish("Dal", "VEG", "Seasoned lentil stew"), dish("Seasonal vegetables", "VEG"), dish("Curd", "VEG")] },
+      snacks: { ...mondayMenu.snacks, items: index === 0 ? mondayMenu.snacks.items : [dish("Masala chai", "VEG", "Spiced milk tea"), dish("Fruit", "VEG")] },
+      dinner: { ...mondayMenu.dinner, items: index === 0 ? mondayMenu.dinner.items : index === 1 ? [dish("Chapati", "VEG"), dish("Chicken curry", "NON_VEG", "Chicken cooked in a spiced gravy"), dish("Salad", "VEG")] : [dish("Chapati", "VEG"), dish("Mixed vegetable curry", "VEG"), dish("Salad", "VEG")] },
     },
   ])) as MenuRecord["week"];
   await MenuModel.findOneAndUpdate(

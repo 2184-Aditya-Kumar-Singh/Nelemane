@@ -158,14 +158,13 @@ export function PgDetailsForm() {
 
 type PaymentFormState = {
   accountType: "BUSINESS" | "PERSONAL";
-  upiId: string;
-  qrImage: OwnerPhotoValue | null;
+  qrAccounts: Array<{ accountHolderName: string; upiId: string; qrImage: OwnerPhotoValue | null }>;
   bank: { accountHolderName: string; bankName: string; accountNumber: string; ifsc: string; branch: string } | null;
   instructions: string;
 };
 
 function PaymentDetailsForm() {
-  const [form, setForm] = useState<PaymentFormState>({ accountType: "BUSINESS", upiId: "", qrImage: null, bank: null, instructions: "" });
+  const [form, setForm] = useState<PaymentFormState>({ accountType: "BUSINESS", qrAccounts: [], bank: null, instructions: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -178,10 +177,17 @@ function PaymentDetailsForm() {
       if (!response.ok || !result.paymentDetails) throw new Error(result.error?.message ?? "Payment details could not be loaded");
       const details = result.paymentDetails;
       const bank = details.bank as PaymentFormState["bank"];
+      const qrAccounts = Array.isArray(details.qrAccounts)
+        ? details.qrAccounts.map((value) => {
+            const account = value as Record<string, unknown>;
+            return { accountHolderName: String(account.accountHolderName ?? ""), upiId: String(account.upiId ?? ""), qrImage: asPhoto(account.qrImage as Record<string, unknown> | null) };
+          })
+        : details.qrImage
+          ? [{ accountHolderName: String(bank?.accountHolderName ?? ""), upiId: String(details.upiId ?? ""), qrImage: asPhoto(details.qrImage as Record<string, unknown>) }]
+          : [];
       if (active) setForm({
         accountType: details.accountType === "PERSONAL" ? "PERSONAL" : "BUSINESS",
-        upiId: String(details.upiId ?? ""),
-        qrImage: asPhoto(details.qrImage as Record<string, unknown> | null),
+        qrAccounts,
         bank: bank ? { accountHolderName: bank.accountHolderName, bankName: bank.bankName, accountNumber: bank.accountNumber, ifsc: bank.ifsc, branch: bank.branch ?? "" } : null,
         instructions: String(details.instructions ?? ""),
       });
@@ -195,11 +201,18 @@ function PaymentDetailsForm() {
     setError("");
     setMessage("");
     const bank = form.bank ? { ...form.bank } : null;
+    const qrAccounts = form.qrAccounts
+      .filter((account) => account.qrImage || account.accountHolderName.trim() || account.upiId.trim())
+      .map((account) => ({
+        accountHolderName: account.accountHolderName,
+        upiId: account.upiId,
+        qrImage: account.qrImage?.assetId ? { assetId: account.qrImage.assetId } : account.qrImage?.publicId ? { publicId: account.qrImage.publicId } : null,
+      }));
     try {
       const response = await fetch("/api/owner/pg/payment-details", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, bank }),
+        body: JSON.stringify({ accountType: form.accountType, qrAccounts, bank, instructions: form.instructions }),
       });
       const result = await response.json() as { notificationStatus?: string } & ApiError;
       if (!response.ok) throw new Error(result.error?.message ?? "Payment details could not be saved");
@@ -223,8 +236,7 @@ function PaymentDetailsForm() {
       <div><h2 className="font-display text-primary text-2xl">Payment details</h2><p className="mt-1 text-sm text-foreground/55">Sensitive bank account information is encrypted. Updates are audited and reported to the platform administrator.</p></div>
       {loading ? <p role="status" className="text-sm text-foreground/60">Loading payment details…</p> : <>
         <label className="max-w-sm text-sm font-semibold">Account type<select value={form.accountType} onChange={(event) => setForm((current) => ({ ...current, accountType: event.target.value as PaymentFormState["accountType"] }))} className="mt-2 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal"><option value="BUSINESS">Business</option><option value="PERSONAL">Personal (QR required)</option></select></label>
-        <label className="max-w-sm text-sm font-semibold">UPI ID<input value={form.upiId} maxLength={100} onChange={(event) => setForm((current) => ({ ...current, upiId: event.target.value }))} className="mt-2 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal" placeholder="name@bank" /></label>
-        <div><span className="text-sm font-semibold">Payment QR</span><div className="mt-2 max-w-xl"><PhotoUpload label="Private payment QR" purpose="OWNER_PAYMENT_QR" value={form.qrImage} onChange={(qrImage) => setForm((current) => ({ ...current, qrImage }))} /></div><p className="mt-2 text-xs text-foreground/55">This image is stored privately and preview links expire quickly.</p></div>
+        <div className="grid gap-3"><div><h3 className="text-sm font-semibold">UPI payment QR codes</h3><p className="mt-1 text-xs text-foreground/55">Tenants see these one at a time. They can switch to the next QR if the receiver limit is reached.</p></div>{form.qrAccounts.map((account, index) => <div key={account.qrImage?.assetId ?? account.qrImage?.publicId ?? `qr-${index}`} className="grid gap-3 rounded-xl border p-4 sm:grid-cols-2"><div className="flex items-center justify-between gap-3 sm:col-span-2"><p className="text-sm font-semibold">QR account {index + 1}</p><button type="button" onClick={() => setForm((current) => ({ ...current, qrAccounts: current.qrAccounts.filter((_, position) => position !== index) }))} className="text-xs font-semibold text-red-700 underline">Remove</button></div><label className="text-sm font-semibold">Account holder name (shown to tenant)<input required minLength={2} maxLength={120} value={account.accountHolderName} onChange={(event) => setForm((current) => ({ ...current, qrAccounts: current.qrAccounts.map((item, position) => position === index ? { ...item, accountHolderName: event.target.value } : item) }))} className="mt-2 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal" /></label><label className="text-sm font-semibold">UPI ID<input required value={account.upiId} maxLength={100} onChange={(event) => setForm((current) => ({ ...current, qrAccounts: current.qrAccounts.map((item, position) => position === index ? { ...item, upiId: event.target.value } : item) }))} className="mt-2 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal" placeholder="name@bank" /></label><div className="sm:col-span-2"><PhotoUpload label={`Private payment QR ${index + 1}`} purpose="OWNER_PAYMENT_QR" value={account.qrImage} onChange={(qrImage) => setForm((current) => ({ ...current, qrAccounts: current.qrAccounts.map((item, position) => position === index ? { ...item, qrImage } : item) }))} /></div></div>)}<button type="button" disabled={form.qrAccounts.length >= 5} onClick={() => setForm((current) => ({ ...current, qrAccounts: [...current.qrAccounts, { accountHolderName: "", upiId: "", qrImage: null }] }))} className="min-h-10 justify-self-start rounded-lg border px-4 text-xs font-semibold disabled:opacity-50">Add another QR account</button></div>
         <div className="rounded-xl border p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h3 className="text-sm font-semibold">Bank transfer details</h3><p className="mt-1 text-xs text-foreground/55">Add a bank account, or remove the bank details and use a QR instead.</p></div><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={Boolean(form.bank)} onChange={(event) => setForm((current) => ({ ...current, bank: event.target.checked ? current.bank ?? { accountHolderName: "", bankName: "", accountNumber: "", ifsc: "", branch: "" } : null }))} className="size-4 accent-primary" />Use bank transfer</label></div>
           {form.bank && <div className="mt-4 grid gap-4 sm:grid-cols-2">{([ ["accountHolderName", "Account holder"], ["bankName", "Bank name"], ["accountNumber", "Account number"], ["ifsc", "IFSC"], ["branch", "Branch (optional)"] ] as const).map(([key, label]) => <label key={key} className="text-sm font-semibold">{label}<input required={key !== "branch"} type={key === "accountNumber" ? "password" : "text"} autoComplete={key === "accountNumber" ? "off" : undefined} value={form.bank?.[key] ?? ""} onChange={(event) => updateBank(key, event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border bg-background px-3 text-sm font-normal" /></label>)}</div>}
         </div>

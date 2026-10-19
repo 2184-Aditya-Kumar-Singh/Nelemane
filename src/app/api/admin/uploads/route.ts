@@ -14,7 +14,7 @@ const purposeSchema = z.enum(["OWNER_PROFILE", "PG_PROFILE", "PAYMENT_QR"]);
 
 function detectImageContentType(bytes: Uint8Array): string | null {
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
-  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
+  if (bytes.length >= 8 && bytes.subarray(0, 8).every((value, index) => value === [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a][index])) return "image/png";
   if (bytes.length >= 12 && String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP") return "image/webp";
   return null;
 }
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     }
 
     const previewUrl = stored.visibility === "private"
-      ? await getStorageProvider().getSignedUrl(stored.publicId, 60)
+      ? `/api/admin/uploads/${asset._id.toString()}/image`
       : stored.url;
     return Response.json({
       asset: { id: asset._id.toString(), purpose, previewUrl, expiresAt: asset.expiresAt.toISOString() },

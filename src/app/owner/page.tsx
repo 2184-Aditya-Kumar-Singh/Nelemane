@@ -48,7 +48,7 @@ export default async function OwnerDashboardPage() {
     !pg.photos.length,
     !pg.houseRules.trim(),
     !roomTypeCount,
-    !pg.paymentDetails.qrImage && !pg.paymentDetails.bank,
+    !pg.paymentDetails.qrImage && !pg.paymentDetails.qrAccounts?.length && !pg.paymentDetails.bank,
   ].filter(Boolean).length;
   const completeness = Math.round(((7 - missing) / 7) * 100);
   const cardData = [

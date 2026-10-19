@@ -69,7 +69,7 @@ export async function POST(request: Request) {
       throw error;
     }
     const previewUrl = privateAsset
-      ? await getStorageProvider().getSignedUrl(stored.publicId, 60)
+      ? `/api/owner/uploads/${asset._id.toString()}/image`
       : stored.url;
     return Response.json({ asset: { id: asset._id.toString(), purpose, previewUrl } }, { status: 201 });
   } catch (error) {

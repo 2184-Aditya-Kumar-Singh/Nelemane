@@ -48,6 +48,7 @@ export async function POST(request: Request) {
         const assetIds = new Set<string>();
         if (pg.profilePhoto?.publicId) assetIds.add(pg.profilePhoto.publicId);
         if (pg.paymentDetails.qrImage?.publicId) assetIds.add(pg.paymentDetails.qrImage.publicId);
+        for (const account of pg.paymentDetails.qrAccounts ?? []) if (account.qrImage?.publicId) assetIds.add(account.qrImage.publicId);
         for (const photo of pg.photos) assetIds.add(photo.publicId);
         for (const user of users) if (user.profilePhoto?.publicId) assetIds.add(user.profilePhoto.publicId);
         for (const upload of claimedUploads) assetIds.add(upload.publicId);

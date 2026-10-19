@@ -31,6 +31,7 @@ export function PgList({ pgs }: { pgs: PgListItem[] }) {
 
 function PgRow({ pg }: { pg: PgListItem }) {
   const router = useRouter();
+  const [subscriptionStatus, setSubscriptionStatus] = useState(pg.subscription.status);
   const [showDelete, setShowDelete] = useState(false);
   const [nameConfirmation, setNameConfirmation] = useState("");
   const [reason, setReason] = useState("");
@@ -41,19 +42,23 @@ function PgRow({ pg }: { pg: PgListItem }) {
   const canPurge = pg.status === "DELETED";
 
   async function changeSubscription() {
-    const status = pg.subscription.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
+    const status = subscriptionStatus === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
     if (!window.confirm(`${status === "SUSPENDED" ? "Suspend" : "Reactivate"} the subscription for ${pg.name}?`)) return;
     setWorking(true);
     setError("");
+    setNotice("");
     try {
       const response = await fetch(`/api/admin/pgs/${pg.id}/subscription`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ status }),
       });
-      const body = await response.json() as { error?: { message?: string } };
-      if (!response.ok) throw new Error(body.error?.message ?? "Subscription could not be changed");
-      setNotice(`Subscription ${status.toLowerCase()}.`);
+      const body = await response.json() as { status?: "ACTIVE" | "SUSPENDED"; error?: { message?: string } };
+      if (!response.ok || body.status !== status) throw new Error(body.error?.message ?? "Subscription could not be changed");
+      setSubscriptionStatus(body.status);
+      setNotice(status === "SUSPENDED"
+        ? "Subscription suspended. This PG is hidden from public discovery."
+        : `Subscription reactivated. Public listing remains ${pg.isListed ? "enabled" : "hidden"}.`);
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Subscription could not be changed");
@@ -109,16 +114,16 @@ function PgRow({ pg }: { pg: PgListItem }) {
     <article className="border-border rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2"><h2 className="font-display text-primary text-2xl font-medium">{pg.name}</h2><StatusBadge value={pg.status} /><StatusBadge value={pg.subscription.status} /></div>
+          <div className="flex flex-wrap items-center gap-2"><h2 className="font-display text-primary text-2xl font-medium">{pg.name}</h2><StatusBadge value={pg.status} /><StatusBadge value={subscriptionStatus} /></div>
           <p className="text-foreground/60 mt-2 text-sm">{pg.locality}, Bengaluru · PIN {pg.pincode}</p>
           <p className="mt-3 text-sm font-semibold">{pg.owner.name} <span className="text-foreground/50 font-normal">· {pg.owner.email} · {pg.owner.phone}</span></p>
-          <p className="text-foreground/50 mt-1 text-xs">{pg.subscription.planLabel} · ends {new Date(pg.subscription.endsAt).toLocaleDateString("en-IN")}{pg.isListed ? " · Listed" : " · Hidden"}</p>
+          <p className="text-foreground/50 mt-1 text-xs">{pg.subscription.planLabel} · ends {new Date(pg.subscription.endsAt).toLocaleDateString("en-IN")}{subscriptionStatus === "ACTIVE" && pg.isListed ? " · Public listing enabled" : " · Hidden from public listings"}</p>
           {notice && <p role="status" className="text-success mt-3 text-sm">{notice}</p>}
           {error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href={`/admin/pgs/${pg.id}`} className="inline-flex min-h-10 items-center rounded-lg border px-3 text-sm font-semibold hover:bg-muted">View / edit</Link>
-          {pg.status === "ACTIVE" && pg.subscription.status !== "CANCELLED" && <button type="button" disabled={working} onClick={changeSubscription} className="min-h-10 rounded-lg border px-3 text-sm font-semibold hover:bg-muted disabled:opacity-50">{pg.subscription.status === "ACTIVE" ? "Suspend" : "Reactivate"}</button>}
+          {pg.status === "ACTIVE" && subscriptionStatus !== "CANCELLED" && <button type="button" disabled={working} onClick={changeSubscription} className="min-h-10 rounded-lg border px-3 text-sm font-semibold hover:bg-muted disabled:opacity-50">{working ? subscriptionStatus === "ACTIVE" ? "Suspending…" : "Reactivating…" : subscriptionStatus === "ACTIVE" ? "Suspend" : "Reactivate"}</button>}
           {pg.status === "ACTIVE" && <button type="button" disabled={working} onClick={() => { setError(""); setShowDelete(true); }} className="min-h-10 rounded-lg border border-red-200 px-3 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">Delete</button>}
           {canPurge && <button type="button" disabled={working} onClick={() => { setError(""); setPurgeConfirmation(" "); }} className="min-h-10 rounded-lg bg-red-700 px-3 text-sm font-semibold text-white hover:bg-red-800 disabled:opacity-50">Purge eligible</button>}
         </div>

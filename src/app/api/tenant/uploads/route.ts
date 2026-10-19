@@ -45,8 +45,8 @@ export async function POST(request: Request) {
       await getStorageProvider().delete(stored.publicId).catch(() => undefined);
       throw error;
     }
-    const previewUrl = await getStorageProvider().getSignedUrl(stored.publicId, 60);
-    return Response.json({ asset: { id: asset._id.toString(), previewUrl, expiresInSeconds: 60 } }, { status: 201 });
+    const previewUrl = `/api/tenant/uploads/${asset._id.toString()}/image?purpose=${purpose}`;
+    return Response.json({ asset: { id: asset._id.toString(), previewUrl } }, { status: 201 });
   } catch (error) {
     const response = authorizationErrorResponse(error);
     if (response) return response;

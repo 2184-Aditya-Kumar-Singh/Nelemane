@@ -19,6 +19,7 @@
   color-scheme: light;
   --background: #fffbf5;
   --foreground: #211f3f;
+  --surface: #ffffff;
   --primary: #1e1b4b;
   --primary-foreground: #fffbf5;
   --accent: #f59e0b;
@@ -33,6 +34,7 @@
   color-scheme: dark;
   --background: #111322;
   --foreground: #f7f3ec;
+  --surface: #1b1d30;
   --primary: #c4b5fd;
   --primary-foreground: #1e1b4b;
   --accent: #fbbf24;
@@ -41,17 +43,34 @@
   --border: #383a4c;
 }
 
+.dark [class~="bg-white"] {
+  background-color: var(--surface) !important;
+}
+
+.dark :is([class~="bg-white/55"], [class~="bg-white/60"], [class~="bg-white/70"], [class~="bg-white/75"], [class~="bg-white/80"], [class~="bg-white/90"]) {
+  background-color: color-mix(in srgb, var(--surface) 94%, transparent) !important;
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not(.light) {
     color-scheme: dark;
     --background: #111322;
     --foreground: #f7f3ec;
+    --surface: #1b1d30;
     --primary: #c4b5fd;
     --primary-foreground: #1e1b4b;
     --accent: #fbbf24;
     --success: #4ade80;
     --muted: #24263a;
     --border: #383a4c;
+  }
+
+  :root:not(.light) [class~="bg-white"] {
+    background-color: var(--surface) !important;
+  }
+
+  :root:not(.light) :is([class~="bg-white/55"], [class~="bg-white/60"], [class~="bg-white/70"], [class~="bg-white/75"], [class~="bg-white/80"], [class~="bg-white/90"]) {
+    background-color: color-mix(in srgb, var(--surface) 94%, transparent) !important;
   }
 }
 

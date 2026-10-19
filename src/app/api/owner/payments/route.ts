@@ -61,7 +61,7 @@ export async function GET(request: Request) {
         duplicateTransaction: Boolean(payment.transactionId && (transactionCounts.get(payment.transactionId) ?? 0) > 1),
         transactionMonthOlderThanCharge: getIstMonthKey(payment.transactionDate) < payment.month,
         payerDiffersFromTenant: Boolean(tenant && payment.payerName.trim().toLowerCase() !== tenant.name.trim().toLowerCase()),
-        payerName: payment.payerName, note: payment.note ?? "", rejectionReason: payment.rejectionReason ?? "",
+        payerName: payment.payerName, recipientAccountName: payment.recipientAccountName ?? "", note: payment.note ?? "", rejectionReason: payment.rejectionReason ?? "",
         createdAt: payment.createdAt.toISOString(), hasScreenshot: Boolean(payment.screenshot),
         tenant: { name: tenant?.name ?? "Former tenant", email: tenant?.email ?? "", phone: tenant?.phone ?? "" },
         room: room ? { number: room.roomNumber, floor: room.floor, block: room.block ?? "", type: roomTypeMap.get(room.roomTypeId.toString()) ?? "" } : null,

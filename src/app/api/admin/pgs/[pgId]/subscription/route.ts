@@ -26,7 +26,6 @@ export async function PATCH(
       {
         $set: {
           "subscription.status": parsed.data.status,
-          isListed: parsed.data.status === "ACTIVE",
         },
       },
       { returnDocument: "after", runValidators: true },
@@ -38,7 +37,7 @@ export async function PATCH(
       action: parsed.data.status === "SUSPENDED" ? "PG_SUBSCRIPTION_SUSPENDED" : "PG_SUBSCRIPTION_REACTIVATED",
       entity: "PG",
       entityId: pg._id,
-      meta: { name: pg.name, status: parsed.data.status },
+      meta: { name: pg.name, status: parsed.data.status, isListed: pg.isListed },
     });
     return Response.json({ status: parsed.data.status, isListed: pg.isListed });
   } catch (error) {

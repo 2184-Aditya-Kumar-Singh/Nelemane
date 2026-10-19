@@ -10,21 +10,19 @@ import { AuditLogModel } from "@/server/db/models/audit-log";
 import { PgModel } from "@/server/db/models/pg";
 import { TicketModel } from "@/server/db/models/ticket";
 import { emailTicketReopened } from "@/server/tickets/notifications";
-import { signTicketImages } from "@/server/tickets/assets";
 
 export const runtime = "nodejs";
 
 export async function GET(_request: Request, context: { params: Promise<{ ticketId: string }> }) {
   try {
-    const { user, tenant, pgId } = await requireActiveTenant();
+    const { tenant, pgId } = await requireActiveTenant();
     const { ticketId } = await context.params;
     if (!Types.ObjectId.isValid(ticketId)) return Response.json({ error: { message: "Ticket was not found" } }, { status: 404 });
     await connectToDatabase();
     const ticket = await TicketModel.findOne({ _id: ticketId, tenantId: tenant._id, pgId }).lean();
     if (!ticket) return Response.json({ error: { message: "Ticket was not found" } }, { status: 404 });
-    const images = await signTicketImages(ticket.images);
-    const proofImages = ticket.resolution?.images ? await signTicketImages(ticket.resolution.images) : [];
-    if (images.length || proofImages.length) await AuditLogModel.create({ actorId: user.id, action: "TICKET_IMAGES_VIEWED", entity: "Ticket", entityId: ticket._id, meta: { pgId, tenantId: tenant._id.toString(), imageCount: images.length + proofImages.length } });
+    const images = (ticket.images ?? []).map((_, index) => `/api/tenant/tickets/${ticket._id.toString()}/image?group=ticket&index=${index}`);
+    const proofImages = (ticket.resolution?.images ?? []).map((_, index) => `/api/tenant/tickets/${ticket._id.toString()}/image?group=resolution&index=${index}`);
     return Response.json({ ticket: {
       id: ticket._id.toString(), title: ticket.title, description: ticket.description, category: ticket.category,
       priority: ticket.priority, status: ticket.status, createdAt: ticket.createdAt.toISOString(), updatedAt: ticket.updatedAt.toISOString(),

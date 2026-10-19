@@ -2,9 +2,7 @@ import { Types } from "mongoose";
 
 import { authorizationErrorResponse, requirePgScope, requireRoles } from "@/server/auth/authorization";
 import { connectToDatabase } from "@/server/db/connection";
-import { AuditLogModel } from "@/server/db/models/audit-log";
 import { TenantModel } from "@/server/db/models/tenant";
-import { getStorageProvider } from "@/server/providers/storage";
 
 export async function GET(_request: Request, context: { params: Promise<{ tenantId: string }> }) {
   try {
@@ -15,12 +13,7 @@ export async function GET(_request: Request, context: { params: Promise<{ tenant
     await connectToDatabase();
     const tenant = await TenantModel.findOne({ _id: tenantId, pgId }).select("aadhaarCard").lean();
     if (!tenant?.aadhaarCard) return Response.json({ error: { message: "Aadhaar image was not found" } }, { status: 404 });
-    const previewUrl = await getStorageProvider().getSignedUrl(tenant.aadhaarCard.publicId, 60);
-    await AuditLogModel.create({
-      actorId: new Types.ObjectId(user.id), action: "TENANT_AADHAAR_VIEWED", entity: "Tenant",
-      entityId: new Types.ObjectId(tenantId), meta: { pgId, access: "signed-url-issued" },
-    });
-    return Response.json({ previewUrl, expiresInSeconds: 60 });
+    return Response.json({ previewUrl: `/api/owner/tenants/${tenantId}/aadhaar/image` });
   } catch (error) {
     const response = authorizationErrorResponse(error);
     if (response) return response;

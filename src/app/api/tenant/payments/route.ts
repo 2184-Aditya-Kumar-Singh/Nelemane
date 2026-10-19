@@ -106,7 +106,7 @@ export async function POST(request: Request) {
         const payment = await PaymentModel.create([{
           pgId: new Types.ObjectId(pgId), tenantId: tenant._id, chargeId: charge._id, month: charge.month,
           source: "TENANT", mode: parsed.data.mode, transactionId, transactionDate: paymentDateFromIst(parsed.data.transactionDate),
-          amountSubmitted: parsed.data.amountPaise, payerName: parsed.data.payerName, note: parsed.data.note || undefined,
+          amountSubmitted: parsed.data.amountPaise, payerName: parsed.data.payerName, recipientAccountName: parsed.data.recipientAccountName, note: parsed.data.note || undefined,
           screenshot: { publicId: screenshot.asset.publicId, resourceType: "image" }, status: "PENDING",
         }], { session });
         paymentId = payment[0]!._id.toString();

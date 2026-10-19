@@ -16,8 +16,7 @@ interface RegistrationForm {
   };
   payment: {
     accountType: "BUSINESS" | "PERSONAL";
-    upiId: string;
-    qrAssetId: string;
+    qrAccounts: Array<{ rowId: string; accountHolderName: string; upiId: string; qrAssetId: string }>;
     bankEnabled: boolean;
     bank: { accountHolderName: string; bankName: string; accountNumber: string; ifsc: string; branch: string };
     instructions: string;
@@ -25,7 +24,8 @@ interface RegistrationForm {
   subscription: { planLabel: string; startsAt: string; endsAt: string; notes: string };
 }
 
-const STORAGE_KEY = "nelemane.admin.pg-registration.v1";
+const STORAGE_KEY = "nelemane.admin.pg-registration.v2";
+const LEGACY_STORAGE_KEY = "nelemane.admin.pg-registration.v1";
 const initialForm: RegistrationForm = {
   owner: { name: "", phone: "", email: "", profileAssetId: "" },
   pg: {
@@ -37,8 +37,7 @@ const initialForm: RegistrationForm = {
   },
   payment: {
     accountType: "BUSINESS",
-    upiId: "",
-    qrAssetId: "",
+    qrAccounts: [],
     bankEnabled: false,
     bank: { accountHolderName: "", bankName: "", accountNumber: "", ifsc: "", branch: "" },
     instructions: "",
@@ -50,9 +49,10 @@ const steps = ["Owner", "PG details", "Rent collection", "Subscription"];
 
 function restoreDraft(): RegistrationForm | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return null;
-    const saved = JSON.parse(raw) as Partial<RegistrationForm>;
+    const saved = JSON.parse(raw) as Partial<RegistrationForm> & { payment?: Partial<RegistrationForm["payment"]> & { upiId?: string; qrAssetId?: string } };
+    const savedQrAccounts = saved.payment?.qrAccounts ?? (saved.payment?.qrAssetId ? [{ rowId: saved.payment.qrAssetId, accountHolderName: "", upiId: saved.payment.upiId ?? "", qrAssetId: saved.payment.qrAssetId }] : []);
     return {
       ...initialForm,
       ...saved,
@@ -61,6 +61,7 @@ function restoreDraft(): RegistrationForm | null {
       payment: {
         ...initialForm.payment,
         ...saved.payment,
+        qrAccounts: savedQrAccounts.map((item) => ({ ...item, rowId: item.rowId || item.qrAssetId || crypto.randomUUID() })),
         bankEnabled: saved.payment?.bankEnabled ?? Boolean(saved.payment?.bank?.bankName),
         bank: { ...initialForm.payment.bank, ...saved.payment?.bank, accountNumber: "" },
       },
@@ -85,8 +86,7 @@ export function RegistrationWizard() {
       ...next,
       payment: {
         accountType: next.payment.accountType,
-        upiId: next.payment.upiId,
-        qrAssetId: next.payment.qrAssetId,
+        qrAccounts: next.payment.qrAccounts,
         bankEnabled: next.payment.bankEnabled,
         bank: {
           accountHolderName: next.payment.bank.accountHolderName,
@@ -116,8 +116,23 @@ export function RegistrationWizard() {
     commit({ ...form, pg: { ...form.pg, nominee: { ...form.pg.nominee, [field]: value } } });
   }
 
-  function updatePayment(field: "accountType" | "upiId" | "qrAssetId" | "instructions", value: string) {
+  function updatePayment(field: "accountType" | "instructions", value: string) {
     commit({ ...form, payment: { ...form.payment, [field]: value } });
+  }
+
+  function updateQrAccount(index: number, field: "accountHolderName" | "upiId" | "qrAssetId", value: string) {
+    commit({ ...form, payment: { ...form.payment, qrAccounts: form.payment.qrAccounts.map((account, position) => position === index ? { ...account, [field]: value } : account) } });
+  }
+
+  function paymentCandidate() {
+    return {
+      accountType: form.payment.accountType,
+      qrAccounts: form.payment.qrAccounts
+        .filter((account) => account.qrAssetId || account.accountHolderName.trim() || account.upiId.trim())
+        .map(({ accountHolderName, upiId, qrAssetId }) => ({ accountHolderName, upiId, qrAssetId: qrAssetId || undefined })),
+      bank: form.payment.bankEnabled ? form.payment.bank : undefined,
+      instructions: form.payment.instructions,
+    };
   }
 
   function updateBank(field: keyof RegistrationForm["payment"]["bank"], value: string) {
@@ -133,11 +148,7 @@ export function RegistrationWizard() {
       ...form,
       owner: { ...form.owner, profileAssetId: form.owner.profileAssetId || undefined },
       pg: { ...form.pg, profileAssetId: form.pg.profileAssetId || undefined },
-      payment: {
-        ...form.payment,
-        bank: form.payment.bankEnabled ? form.payment.bank : undefined,
-        qrAssetId: form.payment.qrAssetId || undefined,
-      },
+      payment: paymentCandidate(),
     };
     const field = [pgRegistrationSchema.shape.owner, pgRegistrationSchema.shape.pg, pgRegistrationSchema.shape.payment, pgRegistrationSchema.shape.subscription][currentStep];
     const data = [candidate.owner, candidate.pg, candidate.payment, candidate.subscription][currentStep];
@@ -154,13 +165,7 @@ export function RegistrationWizard() {
     const candidate = {
       owner: { ...form.owner, profileAssetId: form.owner.profileAssetId || undefined },
       pg: { ...form.pg, profileAssetId: form.pg.profileAssetId || undefined },
-      payment: {
-        accountType: form.payment.accountType,
-        upiId: form.payment.upiId,
-        qrAssetId: form.payment.qrAssetId || undefined,
-        bank: form.payment.bankEnabled ? form.payment.bank : undefined,
-        instructions: form.payment.instructions,
-      },
+      payment: paymentCandidate(),
       subscription: form.subscription,
     };
     const parsed = pgRegistrationSchema.safeParse(candidate);
@@ -175,7 +180,8 @@ export function RegistrationWizard() {
       const response = await fetch("/api/admin/pgs", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(parsed.data),
+        // Keep date inputs as YYYY-MM-DD strings; the server schema parses them into Dates.
+        body: JSON.stringify(candidate),
       });
       const body = await response.json() as {
         pg?: { id: string };
@@ -183,7 +189,7 @@ export function RegistrationWizard() {
         error?: { message?: string; fields?: Array<{ path: string; message: string }> };
       };
       if (!response.ok || !body.pg) throw new Error(body.error?.fields?.map((field) => `${field.path}: ${field.message}`).join(" · ") ?? body.error?.message ?? "PG could not be registered");
-      try { localStorage.removeItem(STORAGE_KEY); } catch { /* Ignore blocked browser storage. */ }
+      try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(LEGACY_STORAGE_KEY); } catch { /* Ignore blocked browser storage. */ }
       if (body.credentialsDelivery === "SENT") setMessage("Owner credentials were emailed.");
       else if (body.credentialsDelivery === "SKIPPED") setMessage("Development email was skipped; check the local server terminal for the owner credential message.");
       else setMessage("The PG was created, but the owner email failed. Ask the owner to use password recovery before signing in.");
@@ -222,7 +228,7 @@ export function RegistrationWizard() {
 
       {currentStep === 1 && <div className="mt-7 grid gap-4 sm:grid-cols-2"><SectionHeading title="PG profile and address" description="Add the property identity and a contact nominee." /><Field label="PG name" value={form.pg.name} onChange={(value) => updatePg("name", value)} required /><Field label="Address line" value={form.pg.address.line1} onChange={(value) => updateAddress("line1", value)} required /><Field label="Locality" value={form.pg.address.locality} onChange={(value) => updateAddress("locality", value)} required /><Field label="PIN code" value={form.pg.address.pincode} onChange={(value) => updateAddress("pincode", value)} required /><Field label="City" value={form.pg.address.city} onChange={(value) => updateAddress("city", value)} required /><Field label="State" value={form.pg.address.state} onChange={(value) => updateAddress("state", value)} required /><Field label="Landmark" value={form.pg.address.landmark} onChange={(value) => updateAddress("landmark", value)} /><Field label="Google Maps link" type="url" value={form.pg.address.mapsUrl} onChange={(value) => updateAddress("mapsUrl", value)} placeholder="https://maps.google.com/..." /><Field label="GSTIN (optional)" value={form.pg.gstNumber} onChange={(value) => updatePg("gstNumber", value)} /><Field label="Nominee name" value={form.pg.nominee.name} onChange={(value) => updateNominee("name", value)} required /><Field label="Nominee phone" value={form.pg.nominee.phone} onChange={(value) => updateNominee("phone", value)} /><Field label="Nominee relation" value={form.pg.nominee.relation} onChange={(value) => updateNominee("relation", value)} /><UploadField label="PG profile picture (optional)" purpose="PG_PROFILE" assetId={form.pg.profileAssetId} onChange={(assetId) => updatePg("profileAssetId", assetId)} /></div>}
 
-      {currentStep === 2 && <div className="mt-7 grid gap-4 sm:grid-cols-2"><SectionHeading title="Rent collection details" description="Payment instructions are private to the PG and will be stored securely." /><label className="text-sm font-semibold sm:col-span-2">Does this PG collect rent in a business account or the owner&apos;s personal account?<select value={form.payment.accountType} onChange={(event) => updatePayment("accountType", event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"><option value="BUSINESS">Business account</option><option value="PERSONAL">Owner&apos;s personal account</option></select></label><Field label="UPI ID" value={form.payment.upiId} onChange={(value) => updatePayment("upiId", value)} placeholder="name@bank" /><UploadField label={`Payment QR screenshot${form.payment.accountType === "PERSONAL" ? " (required)" : ""}`} purpose="PAYMENT_QR" assetId={form.payment.qrAssetId} onChange={(assetId) => updatePayment("qrAssetId", assetId)} /><label className="flex items-center gap-3 rounded-xl border p-3 text-sm font-semibold sm:col-span-2"><input type="checkbox" checked={form.payment.bankEnabled} onChange={(event) => commit({ ...form, payment: { ...form.payment, bankEnabled: event.target.checked } })} className="size-4 accent-indigo-900" />Add bank transfer details</label>{form.payment.bankEnabled && <><Field label="Account holder name" value={form.payment.bank.accountHolderName} onChange={(value) => updateBank("accountHolderName", value)} required /><Field label="Bank name" value={form.payment.bank.bankName} onChange={(value) => updateBank("bankName", value)} required /><Field label="Account number" type="password" value={form.payment.bank.accountNumber} onChange={(value) => updateBank("accountNumber", value)} autoComplete="off" required /><Field label="IFSC" value={form.payment.bank.ifsc} onChange={(value) => updateBank("ifsc", value)} required /><Field label="Branch (optional)" value={form.payment.bank.branch} onChange={(value) => updateBank("branch", value)} /></>}<label className="text-sm font-semibold sm:col-span-2">Payment instructions<textarea value={form.payment.instructions} onChange={(event) => updatePayment("instructions", event.target.value)} maxLength={1000} rows={3} className="mt-1 w-full rounded-xl border bg-background p-3 font-normal" /></label><p className="text-foreground/55 text-xs sm:col-span-2">At least a QR image or complete bank details are required. Personal accounts must include a QR. The account number is encrypted before it is saved and never stored in the browser draft.</p></div>}
+      {currentStep === 2 && <div className="mt-7 grid gap-4 sm:grid-cols-2"><SectionHeading title="Rent collection details" description="Payment instructions are private to the PG and will be stored securely." /><label className="text-sm font-semibold sm:col-span-2">Does this PG collect rent in a business account or the owner&apos;s personal account?<select value={form.payment.accountType} onChange={(event) => updatePayment("accountType", event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-background px-3 font-normal"><option value="BUSINESS">Business account</option><option value="PERSONAL">Owner&apos;s personal account</option></select></label><div className="grid gap-3 sm:col-span-2"><div><h3 className="text-sm font-semibold">UPI payment QR codes</h3><p className="mt-1 text-xs text-foreground/55">Add up to five QR codes. Tenants see one at a time with the matching UPI ID and account holder.</p></div>{form.payment.qrAccounts.map((account, index) => <div key={account.rowId} className="grid gap-3 rounded-xl border p-4 sm:grid-cols-2"><div className="flex items-center justify-between gap-2 sm:col-span-2"><p className="text-sm font-semibold">QR account {index + 1}</p><button type="button" onClick={() => commit({ ...form, payment: { ...form.payment, qrAccounts: form.payment.qrAccounts.filter((_, position) => position !== index) } })} className="text-xs font-semibold text-red-700 underline">Remove</button></div><Field label="Account holder name (shown to tenant)" value={account.accountHolderName} onChange={(value) => updateQrAccount(index, "accountHolderName", value)} required /><Field label="UPI ID" value={account.upiId} onChange={(value) => updateQrAccount(index, "upiId", value)} placeholder="name@bank" required /><div className="sm:col-span-2"><UploadField label={`Payment QR image${form.payment.accountType === "PERSONAL" ? " (required)" : ""}`} purpose="PAYMENT_QR" assetId={account.qrAssetId} onChange={(assetId) => updateQrAccount(index, "qrAssetId", assetId)} /></div></div>)}<button type="button" disabled={form.payment.qrAccounts.length >= 5} onClick={() => commit({ ...form, payment: { ...form.payment, qrAccounts: [...form.payment.qrAccounts, { rowId: crypto.randomUUID(), accountHolderName: "", upiId: "", qrAssetId: "" }] } })} className="min-h-10 justify-self-start rounded-lg border px-4 text-xs font-semibold disabled:opacity-50">Add another QR account</button></div><label className="flex items-center gap-3 rounded-xl border p-3 text-sm font-semibold sm:col-span-2"><input type="checkbox" checked={form.payment.bankEnabled} onChange={(event) => commit({ ...form, payment: { ...form.payment, bankEnabled: event.target.checked } })} className="size-4 accent-indigo-900" />Add bank transfer details</label>{form.payment.bankEnabled && <><Field label="Account holder name" value={form.payment.bank.accountHolderName} onChange={(value) => updateBank("accountHolderName", value)} required /><Field label="Bank name" value={form.payment.bank.bankName} onChange={(value) => updateBank("bankName", value)} required /><Field label="Account number" type="password" value={form.payment.bank.accountNumber} onChange={(value) => updateBank("accountNumber", value)} autoComplete="off" required /><Field label="IFSC" value={form.payment.bank.ifsc} onChange={(value) => updateBank("ifsc", value)} required /><Field label="Branch (optional)" value={form.payment.bank.branch} onChange={(value) => updateBank("branch", value)} /></>}<label className="text-sm font-semibold sm:col-span-2">Payment instructions<textarea value={form.payment.instructions} onChange={(event) => updatePayment("instructions", event.target.value)} maxLength={1000} rows={3} className="mt-1 w-full rounded-xl border bg-background p-3 font-normal" /></label><p className="text-foreground/55 text-xs sm:col-span-2">At least one QR account or complete bank details are required. Personal accounts must include a QR. Bank account numbers are encrypted and never stored in the browser draft.</p></div>}
 
       {currentStep === 3 && <div className="mt-7 grid gap-4 sm:grid-cols-2"><SectionHeading title="Subscription" description="Set the initial plan label and active dates." /><Field label="Plan label" value={form.subscription.planLabel} onChange={(value) => updateSubscription("planLabel", value)} placeholder="Standard · 12 months" required /><Field label="Start date" type="date" value={form.subscription.startsAt} onChange={(value) => updateSubscription("startsAt", value)} required /><Field label="End date" type="date" value={form.subscription.endsAt} onChange={(value) => updateSubscription("endsAt", value)} required /><label className="text-sm font-semibold sm:col-span-2">Admin notes<textarea value={form.subscription.notes} onChange={(event) => updateSubscription("notes", event.target.value)} maxLength={1000} rows={3} className="mt-1 w-full rounded-xl border bg-background p-3 font-normal" /></label><div className="rounded-2xl bg-muted/60 p-4 text-sm sm:col-span-2"><p className="font-semibold">Registration summary</p><p className="text-foreground/60 mt-2">{form.pg.name || "PG name"} · {form.pg.address.locality || "Locality"}, Bengaluru</p><p className="text-foreground/60">Owner: {form.owner.name || "Owner"} · {form.owner.email || "Email"}</p><p className="text-foreground/60">{form.subscription.planLabel || "Plan"} · {form.subscription.startsAt || "Start"} → {form.subscription.endsAt || "End"}</p></div></div>}
 
