@@ -1,4 +1,5 @@
 # Nelemane
+<<<<<<< HEAD
 
 Nelemane (ನೆಲೆಮನೆ) is a PG management and discovery platform for Bengaluru. The product name is defined once in `src/config/app.ts`.
 
@@ -87,3 +88,6 @@ Install with `pnpm install --frozen-lockfile`, then run `pnpm run typecheck`, `p
 - Seeded owner and tenant accounts share the environment-configured initial password and must change it on first sign-in; their `.invalid` addresses are reserved for local demonstration logins and cannot receive email.
 - Demo QR images are intentionally nonfunctional and carry a visible warning; seeded sample charges and payments are clearly labelled as demo records.
 - pnpm allows the `esbuild` postinstall script because the TypeScript seed runner uses `tsx`.
+=======
+A home away from home in bengaluru.
+>>>>>>> origin/main
