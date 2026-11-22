@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
+import { normalizeAuthUrlEnvironment } from "@/lib/public-app-url";
 import { loginSchema } from "@/server/auth/schemas";
 import { writeAuditLog } from "@/server/auth/audit";
 import {
@@ -22,6 +23,8 @@ async function compareWithDummyHash(password: string): Promise<void> {
   dummyPasswordHash ??= bcrypt.hash(randomBytes(32).toString("hex"), 12);
   await bcrypt.compare(password, await dummyPasswordHash);
 }
+
+normalizeAuthUrlEnvironment();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,

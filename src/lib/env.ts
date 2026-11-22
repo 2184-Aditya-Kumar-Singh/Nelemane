@@ -3,6 +3,8 @@ import "server-only";
 import { Buffer } from "node:buffer";
 import { z } from "zod";
 
+import { getPublicAppUrl } from "@/lib/public-app-url";
+
 const emptyToUndefined = (value: unknown): unknown =>
   value === "" || value === null ? undefined : value;
 
@@ -163,5 +165,12 @@ export function getEnv(): AppEnvironment {
     throw new Error(`Invalid environment configuration: ${details}`);
   }
 
-  return result.data;
+  const environment = result.data;
+  const publicAppUrl = getPublicAppUrl(environment.APP_URL);
+
+  if (publicAppUrl) {
+    environment.APP_URL = publicAppUrl.origin;
+  }
+
+  return environment;
 }

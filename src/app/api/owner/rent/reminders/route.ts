@@ -3,6 +3,7 @@ import { z } from "zod";
 import { escapeHtml } from "@/server/admin/serializers";
 import { authorizationErrorResponse, requirePgScope, requireRoles } from "@/server/auth/authorization";
 import { hasSameOrigin } from "@/server/auth/request-origin";
+import { getPublicAppUrl } from "@/lib/public-app-url";
 import { connectToDatabase } from "@/server/db/connection";
 import { PaymentModel } from "@/server/db/models/payment";
 import { PgModel } from "@/server/db/models/pg";
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
     const filter = { pgId, ...(parsed.data.chargeId ? { _id: parsed.data.chargeId } : {}), ...(parsed.data.month ? { month: parsed.data.month } : {}) };
     const charges = await RentChargeModel.find({ ...filter, status: { $in: ["UNPAID", "PARTIALLY_PAID", "OVERDUE"] } }).sort({ windowEnd: 1 }).limit(1000).lean();
     const output: Array<{ chargeId: string; email: string; sms: string }> = [];
+    const appUrl = getPublicAppUrl(process.env.APP_URL)?.origin ?? "http://localhost:3000";
     const today = getIstDateParts().key;
     for (const charge of charges) {
       const pending = await PaymentModel.exists({ chargeId: charge._id, status: "PENDING" });
@@ -42,7 +44,7 @@ export async function POST(request: Request) {
         pg.reminder.enabled && pg.reminder.email ? sendEmailOnce({
           to: tenant.email, template: overdue ? "rent-overdue-reminder" : "rent-window-open",
           dedupeKey, subject: overdue ? `Rent overdue · ${pg.name}` : `Rent window open · ${pg.name}`,
-          text: message, html: `<p>${escapeHtml(message)}</p><p><a href="${escapeHtml(process.env.APP_URL ?? "http://localhost:3000")}/tenant/rent">Open your rent account</a></p>`,
+          text: message, html: `<p>${escapeHtml(message)}</p><p><a href="${escapeHtml(appUrl)}/tenant/rent">Open your rent account</a></p>`,
         }) : Promise.resolve({ status: "SKIPPED" as const }),
         pg.reminder.enabled && pg.reminder.sms ? sendSmsOnce({
           to: tenant.phone, template: overdue ? "rent-overdue-reminder" : "rent-window-open", dedupeKey: `${dedupeKey}-sms`, text: message,
